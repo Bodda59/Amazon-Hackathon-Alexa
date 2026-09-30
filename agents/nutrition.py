@@ -189,9 +189,10 @@ def _best_match(name: str) -> tuple[dict | None, float]:
         return best, conf
 
     # 3 — LLM fallback
-    print(f"[nutrition] no DB match for {name!r} — asking LLM")
+    # No DB match; attempt LLM estimate and log fallback
     estimate = _llm_estimate_food(name)
     if estimate:
+        _call(log_event, entity="nutrition_fallback", action="insert", actor="nutrition_api", after={"name": name})
         # Cache it in kitchen.db so next run is free
         try:
             conn = nutrition_api._conn()
