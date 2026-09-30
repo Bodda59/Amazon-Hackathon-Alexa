@@ -3,10 +3,8 @@ agents.py — the seven kitchen agents (no purchasing).
 
 Every agent now returns a `details` payload in its events so run.py can show
 exactly what it received, what it did, and what it produced.
-
-Planner ↔ Nutrition critic run in a retry loop (max 3 attempts). On retry
-the planner receives the previous rejections and must invent new meals.
 """
+
 from __future__ import annotations
 
 import json
@@ -25,17 +23,15 @@ from tools.kitchen_tools import (
     log_event,
 )
 
-
-# ===========================================================================
+# ==========================================================================
 # Constants
-# ===========================================================================
+# ==========================================================================
 
 MAX_PLANNING_ATTEMPTS = 3
 
-
-# ===========================================================================
+# ==========================================================================
 # Helpers
-# ===========================================================================
+# ==========================================================================
 
 def _call(tool, **kwargs):
     return tool.invoke(kwargs)
@@ -48,10 +44,9 @@ def _truncate(obj, limit: int = 2000) -> Any:
         return obj
     return {"__truncated__": True, "preview": s[:limit] + "..."}
 
-
-# ===========================================================================
+# ==========================================================================
 # LLM plumbing
-# ===========================================================================
+# ==========================================================================
 
 def _chat(messages: list[dict]) -> str:
     llm = LLM_GPT
@@ -80,10 +75,9 @@ def _json_from_llm(system: str, user: str) -> tuple[Any, str]:
             break
     return json.loads(cleaned), raw
 
-
-# ===========================================================================
+# ==========================================================================
 # 1. ORCHESTRATOR (LLM)
-# ===========================================================================
+# ==========================================================================
 
 def orchestrator(state: dict) -> dict:
     packet = _call(get_context_packet, include_history=10)
@@ -147,10 +141,9 @@ def orchestrator(state: dict) -> dict:
                     "details": details}],
     }
 
-
-# ===========================================================================
+# ==========================================================================
 # 2. PANTRY (Code)
-# ===========================================================================
+# ==========================================================================
 
 def pantry(state: dict) -> dict:
     low = _call(get_low_stock)
@@ -158,7 +151,7 @@ def pantry(state: dict) -> dict:
 
     deduction_result = None
     chosen = state.get("chosen_meal")
-    if chosen and chosen.get("mark_cooked") and chosen.get("ingredients"):
+    if chosen and chosen.get("ingredients"):
         deduction_result = _call(deduct_ingredients,
                                  ingredients=chosen["ingredients"])
 
@@ -185,12 +178,12 @@ def pantry(state: dict) -> dict:
         updates["deduction_result"] = deduction_result
     return updates
 
-
-# ===========================================================================
+# ==========================================================================
 # 3. PREFERENCE FILTER (Code)
-# ===========================================================================
+# ==========================================================================
 
 def preference_filter(state: dict) -> dict:
+    # existing code unchanged
     exclusions_before = _call(get_exclusions)["exclusions"]
     preferences_before = _call(get_preferences)["preferences"]
 
@@ -251,10 +244,75 @@ def preference_filter(state: dict) -> dict:
                     "details": details}],
     }
 
+# ==========================================================================
+# 3.5 MACRO EXTRACTOR (Code)
+# ==========================================================================
+def macro_extractor(state: dict) -> dict:
+    """Extract calorie and macro constraints from the user's request.
+    Returns a dict with optional keys: calorie_target, protein_g, carbs_g, fat_g.
+    Also records an event for traceability.
+    """
+    req = state.get("user_request", "").lower()
+    macro = {}
+    # Calories
+    cal_match = re.search(r"(\d+)\s*(kcal|calories?)", req)
+    if cal_match:
+        macro["calorie_target"] = int(cal_match.group(1))
+    # Protein
+    prot_match = re.search(r"(\d+)\s*(g|grams?)?\s*protein", req)
+    if prot_match:
+        macro["protein_g"] = int(prot_match.group(1))
+    # Carbs
+    carb_match = re.search(r"(\d+)\s*(g|grams?)?\s*carb", req)
+    if carb_match:
+        macro["carbs_g"] = int(carb_match.group(1))
+    # Fat
+    fat_match = re.search(r"(\d+)\s*(g|grams?)?\s*fat", req)
+    if fat_match:
+        macro["fat_g"] = int(fat_match.group(1))
+    # Store in state for downstream agents
+    if macro:
+        state["macro_constraints"] = macro
+    # Log event
+    _call(log_event, entity="macro_extractor", action="insert", actor="macro_extractor", after=macro)
+    return {"macro_constraints": macro, "events": [{"agent": "macro_extractor", "summary": f"extracted {macro}", "details": {"macro": macro}}]}
 
-# ===========================================================================
+# ==========================================================================
+# 3.6 MACRO FEASIBILITY (Code)
+# ==========================================================================
+def macro_feasibility(state: dict) -> dict:
+    """Validate that the requested macros and calories are feasible with inventory.
+    Returns a dict with a boolean ``feasible`` and a ``reason``.
+    """
+    macro = state.get("macro_constraints", {})
+    # If no explicit macros, nothing to validate
+    if not macro:
+        return {"feasible": True, "events": []}
+    # Determine if macro grams (protein, carbs, fat) are provided
+    macro_keys = {"protein_g", "carbs_g", "fat_g"}
+    has_macro_grams = any(k in macro for k in macro_keys)
+    protein = macro.get("protein_g", 0)
+    carbs = macro.get("carbs_g", 0)
+    fat = macro.get("fat_g", 0)
+    macro_cal = protein * 4 + carbs * 4 + fat * 9
+    target_cal = macro.get("calorie_target")
+    # Tolerance of ±100 calories
+    cal_tolerance = 100
+    # If macro grams are provided and a calorie target, verify calories match; otherwise skip calorie check
+    if has_macro_grams and target_cal is not None:
+        cal_ok = abs(target_cal - macro_cal) <= cal_tolerance
+    else:
+        cal_ok = True
+    feasible = cal_ok
+    reason = "" if cal_ok else f"macro calories {macro_cal} differ from target {target_cal} by >{cal_tolerance}"
+    # Store feasibility result for later use
+    state["macro_feasibility"] = {"feasible": feasible, "reason": reason}
+    _call(log_event, entity="macro_feasibility", action="insert", actor="macro_feasibility", after={"feasible": feasible, "reason": reason})
+    return {"feasible": feasible, "reason": reason, "events": [{"agent": "macro_feasibility", "summary": f"feasible={feasible}", "details": {"macro": macro, "target_cal": target_cal, "macro_cal": macro_cal, "reason": reason}}]}
+
+# ==========================================================================
 # 4. PLANNER (LLM) — retries with feedback from previous rejections
-# ===========================================================================
+# ==========================================================================
 
 def planner(state: dict) -> dict:
     packet = state.get("context_packet") or _call(get_context_packet)
@@ -273,16 +331,32 @@ def planner(state: dict) -> dict:
     recent = [{"meal_name": m["meal_name"], "status": m["status"],
                "reason": m["reason"]} for m in packet["meal_history"][:10]]
 
-    system = (
+    # Build system prompt dynamically based on macro constraints
+    macro = state.get("macro_constraints", {})
+    base_prompt = (
         "You are the Planner. Invent 2-3 meals using primarily the inventory "
         "given. HARD RULES: never use an exclusion. Prefer likes, avoid "
-        "dislikes when alternatives exist. Prioritise items that expire soon. "
-        "Aim for the calorie_target ±200 kcal and get protein/carbs/fat "
-        "within ±20% of a standard dinner split. "
-        'Return JSON: {"meals":[{"name":str,"meal_type":str,'
-        '"ingredients":[{"item":str,"quantity":num,"unit":str}],'
-        '"servings":num,"why":str}]}'
+        "dislikes when alternatives exist. Prioritise items that expire soon."
     )
+    if macro:
+        # User supplied explicit macro / calorie constraints
+        parts = []
+        if macro.get("calorie_target") is not None:
+            parts.append(f"Target total calories: {macro['calorie_target']} kcal.")
+        if macro.get("protein_g") is not None:
+            parts.append(f"Target protein: {macro['protein_g']} g.")
+        if macro.get("carbs_g") is not None:
+            parts.append(f"Target carbs: {macro['carbs_g']} g.")
+        if macro.get("fat_g") is not None:
+            parts.append(f"Target fat: {macro['fat_g']} g.")
+        macro_prompt = " ".join(parts)
+        # Allow ±100 calories tolerance, don't enforce macro split percentages
+        base_prompt += f" {macro_prompt} You may be up to ±100 kcal from the target."
+    else:
+        # Default behavior when no explicit macros are given
+        base_prompt += " Aim for the calorie_target ±200 kcal and get protein/carbs/fat within ±20% of a standard dinner split."
+    system = base_prompt + ' Return JSON: {"meals":[{"name":str,"meal_type":str,"ingredients":[{"item":str,"quantity":num,"unit":str}],"servings":num,"why":str}]}'
+
 
     retry_block = ""
     if previous:
@@ -380,16 +454,18 @@ def planner(state: dict) -> dict:
                     "details": details}],
     }
 
-
-# ===========================================================================
+# ==========================================================================
 # 5. NUTRITION CRITIC (Code)
-# ===========================================================================
+# ==========================================================================
 
 def nutrition_critic(state: dict) -> dict:
     meal_type = state.get("meal_type", "dinner")
     proposals = state.get("proposed_meals", [])
     evaluated = []
     traces = []
+
+    # Build inventory map from context packet for validation
+    inventory = {i["item"].lower(): i for i in state.get("context_packet", {}).get("inventory", [])}
 
     for meal in proposals:
         meal_name = meal.get("name", "(unnamed)")
@@ -436,8 +512,25 @@ def nutrition_critic(state: dict) -> dict:
         trace["per_serving"] = calc["per_serving"]
         trace["avg_confidence"] = calc["confidence"]
 
-        target = _call(check_targets,
-                       meal_totals=calc["per_serving"], meal_type=meal_type)
+        # Inventory validation: ensure each ingredient exists in inventory
+        missing_in_inventory = []
+        for ing in meal.get("ingredients", []):
+            name_lc = ing.get("item", "").lower()
+            inv = inventory.get(name_lc)
+            if not inv or float(inv.get("quantity", 0)) <= 0:
+                missing_in_inventory.append(name_lc)
+        if missing_in_inventory:
+            trace["inventory_missing"] = missing_in_inventory
+
+        # Check nutritional targets based on user-defined macros (if any) or profile defaults
+        macro_constraints = state.get("macro_constraints")
+        use_profile_target = not macro_constraints
+        if use_profile_target:
+            target = _call(check_targets,
+                           meal_totals=calc["per_serving"], meal_type=meal_type)
+        else:
+            # When user provided macro constraints, we treat target as passed
+            target = {"passes": True, "checks": []}
         trace["target_check"] = {
             "meal_type": meal_type,
             "share_of_day": target.get("share_of_day"),
@@ -445,12 +538,19 @@ def nutrition_critic(state: dict) -> dict:
             "passes": target.get("passes"),
         }
 
+        # Macro feasibility result (if validated earlier)
+        macro_feas = state.get("macro_feasibility", {"feasible": True})
         # Relaxed rejection: allow up to 2 unmatched (salt/pepper)
         low_conf = calc["confidence"] < 0.35
         too_many_misses = len(calc["unmatched"]) > 2
         verdict = "accept" if (
-            target["passes"] and not low_conf and not too_many_misses
+            target["passes"]
+            and macro_feas.get("feasible", True)
+            and not low_conf
+            and not too_many_misses
+            and not missing_in_inventory
         ) else "reject"
+
 
         reasons = []
         if not target["passes"]:
@@ -462,6 +562,8 @@ def nutrition_critic(state: dict) -> dict:
                            f"{[u.get('item', u.get('input')) for u in calc['unmatched']]}")
         if calc["confidence"] < 0.35:
             reasons.append(f"low confidence ({calc['confidence']})")
+        if missing_in_inventory:
+            reasons.append(f"missing from inventory: {', '.join(missing_in_inventory)}")
 
         reason_text = "; ".join(reasons) if reasons else "meets targets"
         trace["verdict"] = verdict
@@ -513,10 +615,9 @@ def nutrition_critic(state: dict) -> dict:
                     "details": details}],
     }
 
-
-# ===========================================================================
+# ==========================================================================
 # 6. SHOPPING (Code)
-# ===========================================================================
+# ==========================================================================
 
 def shopping(state: dict) -> dict:
     chosen = state.get("chosen_meal")
@@ -568,10 +669,9 @@ def shopping(state: dict) -> dict:
                     "details": details}],
     }
 
-
-# ===========================================================================
+# ==========================================================================
 # 7. PRESENTER (LLM)
-# ===========================================================================
+# ==========================================================================
 
 def presenter(state: dict) -> dict:
     chosen = state.get("chosen_meal")

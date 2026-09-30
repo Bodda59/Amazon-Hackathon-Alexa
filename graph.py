@@ -33,6 +33,8 @@ class KitchenState(TypedDict, total=False):
     # Planner
     proposed_meals: list
     planning_attempts: int          # NEW
+    macro_constraints: dict
+    macro_feasibility: dict
 
     # Nutrition critic
     evaluated_meals: list
@@ -74,18 +76,22 @@ def build_graph():
     g = StateGraph(KitchenState)
 
     g.add_node("orchestrator",      agents.orchestrator)
+    g.add_node("macro_extractor",   agents.macro_extractor)
     g.add_node("pantry",            agents.pantry)
     g.add_node("preference_filter", agents.preference_filter)
     g.add_node("planner",           agents.planner)
+    g.add_node("macro_feasibility", agents.macro_feasibility)
     g.add_node("nutrition_critic",  agents.nutrition_critic)
     g.add_node("shopping",          agents.shopping)
     g.add_node("presenter",         agents.presenter)
 
     g.add_edge(START, "orchestrator")
-    g.add_edge("orchestrator", "pantry")
+    g.add_edge("orchestrator", "macro_extractor")
+    g.add_edge("macro_extractor", "pantry")
     g.add_edge("pantry", "preference_filter")
     g.add_edge("preference_filter", "planner")
-    g.add_edge("planner", "nutrition_critic")
+    g.add_edge("planner", "macro_feasibility")
+    g.add_edge("macro_feasibility", "nutrition_critic")
 
     g.add_conditional_edges("nutrition_critic", _route_after_nutrition, {
         "shopping": "shopping",
