@@ -259,15 +259,15 @@ def macro_extractor(state: dict) -> dict:
     if cal_match:
         macro["calorie_target"] = int(cal_match.group(1))
     # Protein
-    prot_match = re.search(r"(\d+)\s*(g|grams?)?\s*protein", req)
+    prot_match = re.search(r"(\d+)\s*(g|grams?)?\s*(?:of\s+)?protein", req)
     if prot_match:
         macro["protein_g"] = int(prot_match.group(1))
     # Carbs
-    carb_match = re.search(r"(\d+)\s*(g|grams?)?\s*carb", req)
+    carb_match = re.search(r"(\d+)\s*(g|grams?)?\s*(?:of\s+)?carb", req)
     if carb_match:
         macro["carbs_g"] = int(carb_match.group(1))
     # Fat
-    fat_match = re.search(r"(\d+)\s*(g|grams?)?\s*fat", req)
+    fat_match = re.search(r"(\d+)\s*(g|grams?)?\s*(?:of\s+)?fat", req)
     if fat_match:
         macro["fat_g"] = int(fat_match.group(1))
     # Store in state for downstream agents
@@ -524,13 +524,65 @@ def nutrition_critic(state: dict) -> dict:
 
         # Check nutritional targets based on user-defined macros (if any) or profile defaults
         macro_constraints = state.get("macro_constraints")
-        use_profile_target = not macro_constraints
-        if use_profile_target:
+        if macro_constraints:
+            # Build target based on user‑provided macro / calorie constraints
+            target = {"passes": True, "checks": []}
+            # Calorie target check (±100 kcal tolerance)
+            target_cal = macro_constraints.get("calorie_target")
+            if target_cal is not None:
+                actual_cal = calc["per_serving"].get("calories")
+                cal_ok = abs(actual_cal - target_cal) <= 100
+                target["passes"] = cal_ok
+                target["checks"].append({
+                    "macro": "calories",
+                    "actual": actual_cal,
+                    "target": target_cal,
+                    "band": [target_cal - 100, target_cal + 100],
+                    "pass": cal_ok,
+                })
+            # Protein target check (±5g tolerance)
+            protein_target = macro_constraints.get("protein_g")
+            if protein_target is not None:
+                actual_protein = calc["per_serving"].get("protein_g")
+                protein_ok = abs(actual_protein - protein_target) <= 5
+                target["passes"] = target["passes"] and protein_ok
+                target["checks"].append({
+                    "macro": "protein_g",
+                    "actual": actual_protein,
+                    "target": protein_target,
+                    "band": [protein_target - 5, protein_target + 5],
+                    "pass": protein_ok,
+                })
+            # Carbs target check (±5g tolerance)
+            carbs_target = macro_constraints.get("carbs_g")
+            if carbs_target is not None:
+                actual_carbs = calc["per_serving"].get("carbs_g")
+                carbs_ok = abs(actual_carbs - carbs_target) <= 5
+                target["passes"] = target["passes"] and carbs_ok
+                target["checks"].append({
+                    "macro": "carbs_g",
+                    "actual": actual_carbs,
+                    "target": carbs_target,
+                    "band": [carbs_target - 5, carbs_target + 5],
+                    "pass": carbs_ok,
+                })
+            # Fat target check (±5g tolerance)
+            fat_target = macro_constraints.get("fat_g")
+            if fat_target is not None:
+                actual_fat = calc["per_serving"].get("fat_g")
+                fat_ok = abs(actual_fat - fat_target) <= 5
+                target["passes"] = target["passes"] and fat_ok
+                target["checks"].append({
+                    "macro": "fat_g",
+                    "actual": actual_fat,
+                    "target": fat_target,
+                    "band": [fat_target - 5, fat_target + 5],
+                    "pass": fat_ok,
+                })
+            # If macro grams were provided, macro_feasibility already handled them
+        else:
             target = _call(check_targets,
                            meal_totals=calc["per_serving"], meal_type=meal_type)
-        else:
-            # When user provided macro constraints, we treat target as passed
-            target = {"passes": True, "checks": []}
         trace["target_check"] = {
             "meal_type": meal_type,
             "share_of_day": target.get("share_of_day"),
