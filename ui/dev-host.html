@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alexa+ MCP Apps — Live Host</title>
+  <style>
+    :root {
+      --bg:#070a13; --surface:#0f1626; --border:rgba(255,255,255,.08);
+      --text:#f1f5f9; --muted:#94a3b8; --dim:#64748b;
+      --accent:#00d2ff; --emerald:#10b981; --amber:#f59e0b; --rose:#f43f5e;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; height:100vh; display:flex; flex-direction:column;
+           background:var(--bg); color:var(--text); overflow:hidden; }
+    header { display:flex; gap:.5rem; align-items:center; padding:.6rem 1rem;
+             background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+    header input { font:inherit; padding:.4rem .6rem; border-radius:.5rem;
+                   border:1px solid var(--border); background:rgba(255,255,255,.03);
+                   color:var(--text); width:18rem; }
+    header button { font:inherit; padding:.4rem .8rem; border-radius:.5rem;
+                    border:1px solid var(--border); background:rgba(255,255,255,.05);
+                    color:var(--text); cursor:pointer; }
+    header button:hover { background:rgba(255,255,255,.1); }
+    #conn-status { font-size:.8rem; color:var(--muted); margin-left:auto; }
+    #conn-status.ok { color:var(--emerald); }
+    #conn-status.err { color:var(--rose); }
+    .workspace { flex:1; display:flex; overflow:hidden; }
+    .stage { flex:1; display:grid; grid-template-columns:repeat(auto-fit,minmax(24rem,1fr));
+             gap:1rem; padding:1rem; overflow-y:auto; }
+    .panel { background:var(--surface); border:1px solid var(--border); border-radius:.85rem;
+             display:flex; flex-direction:column; height:32rem; overflow:hidden; }
+    .panel-header { padding:.5rem .75rem; border-bottom:1px solid var(--border);
+                    display:flex; justify-content:space-between; align-items:center;
+                    font-size:.8rem; color:var(--accent); font-family:ui-monospace, monospace; }
+    .panel-header button { background:none; border:none; color:var(--dim); cursor:pointer;
+                           padding:.15rem .35rem; border-radius:.25rem; }
+    .panel-header button:hover { color:var(--text); background:rgba(255,255,255,.05); }
+    iframe { border:0; flex:1; width:100%; background:transparent; }
+    aside { width:24rem; background:#090d18; border-left:1px solid var(--border);
+            display:flex; flex-direction:column; flex-shrink:0; }
+    .tools { padding:.75rem; border-bottom:1px solid var(--border); display:flex;
+             flex-direction:column; gap:.4rem; }
+    .tools h3 { margin:0 0 .25rem; font-size:.75rem; text-transform:uppercase;
+                color:var(--muted); letter-spacing:.05em; }
+    .tools button { font:inherit; font-size:.8rem; padding:.45rem .6rem; text-align:left;
+                    border-radius:.4rem; border:1px solid var(--border);
+                    background:rgba(255,255,255,.03); color:var(--text); cursor:pointer; }
+    .tools button:hover { background:rgba(0,210,255,.08); border-color:rgba(0,210,255,.25); }
+    .tools button[disabled] { opacity:.4; cursor:not-allowed; }
+    .log { flex:1; overflow-y:auto; padding:.6rem; font:11px/1.5 ui-monospace, monospace; }
+    .log-entry { padding:.4rem .5rem; border-radius:.35rem; background:rgba(255,255,255,.02);
+                 border:1px solid var(--border); margin-bottom:.35rem; word-break:break-all; }
+    .log-entry .meta { display:flex; justify-content:space-between; color:var(--dim);
+                       font-size:.65rem; margin-bottom:.2rem; }
+    .tag { padding:.05rem .35rem; border-radius:.2rem; font-weight:600; }
+    .tag.in   { background:rgba(59,130,246,.15); color:#60a5fa; }
+    .tag.out  { background:rgba(16,185,129,.15); color:#34d399; }
+    .tag.err  { background:rgba(244,63,94,.15); color:#fb7185; }
+  </style>
+</head>
+<body>
+  <header>
+    <input id="mcp-url" value="http://localhost:8005/mcp">
+    <button id="connect-btn">Connect</button>
+    <span id="conn-status">Disconnected</span>
+  </header>
+
+  <div class="workspace">
+    <div class="stage">
+      <div class="panel" data-app="meal-card">
+        <div class="panel-header"><span>ui://meal-card</span>
+          <button onclick="reload('meal-card')">↻</button></div>
+        <iframe src="./meal-card.html"></iframe>
+      </div>
+      <div class="panel" data-app="inventory-card">
+        <div class="panel-header"><span>ui://inventory-card</span>
+          <button onclick="reload('inventory-card')">↻</button></div>
+        <iframe src="./inventory-card.html"></iframe>
+      </div>
+      <div class="panel" data-app="cart-approval">
+        <div class="panel-header"><span>ui://cart-approval</span>
+          <button onclick="reload('cart-approval')">↻</button></div>
+        <iframe src="./cart-approval.html"></iframe>
+      </div>
+      <div class="panel" data-app="nutrition-status">
+        <div class="panel-header"><span>ui://nutrition-status</span>
+          <button onclick="reload('nutrition-status')">↻</button></div>
+        <iframe src="./nutrition-status.html"></iframe>
+      </div>
+    </div>
+
+    <aside>
+      <div class="tools">
+        <h3>Trigger tools</h3>
+        <button id="btn-plan" disabled>plan_meal</button>
+        <button id="btn-inv" disabled>manage_inventory (list)</button>
+        <button id="btn-shop" disabled>shop_for_meal (build cart)</button>
+        <button id="btn-nut" disabled>nutrition_status (status)</button>
+      </div>
+      <div class="log" id="log"></div>
+    </aside>
+  </div>
+
+  <script>
+  // ---------- logging ----------
+  const logEl = document.getElementById("log");
+  function log(tag, method, detail) {
+    const e = document.createElement("div");
+    e.className = "log-entry";
+    e.innerHTML = `<div class="meta"><span>${new Date().toLocaleTimeString()}</span>
+      <span class="tag ${tag}">${method}</span></div>
+      <div style="color:var(--muted)">${esc(typeof detail === "string" ? detail : JSON.stringify(detail))}</div>`;
+    logEl.appendChild(e);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // ---------- MCP client (Streamable HTTP) ----------
+  class MCPClient {
+    constructor(url) { this.url = url; this.sessionId = null; this.nextId = 1; }
+    async _post(method, params, isNotification) {
+      const headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+      };
+      if (this.sessionId) headers["Mcp-Session-Id"] = this.sessionId;
+      const body = isNotification
+        ? { jsonrpc: "2.0", method, params }
+        : { jsonrpc: "2.0", id: this.nextId++, method, params };
+      const res = await fetch(this.url, { method: "POST", headers, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const sid = res.headers.get("Mcp-Session-Id");
+      if (sid) this.sessionId = sid;
+      if (isNotification) return null;
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("text/event-stream")) return this._readSSE(res, body.id);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      return data.result;
+    }
+    async _readSSE(res, wantId) {
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+
+      const parse = (ev) => {
+        const data = ev.split("\n")
+          .filter(l => l.startsWith("data:"))
+          .map(l => l.slice(5).trim())
+          .join("");
+        if (!data) return undefined;
+        let msg;
+        try { msg = JSON.parse(data); } catch { return undefined; }
+        if (msg.id === wantId) {
+          if (msg.error) throw new Error(msg.error.message);
+          return msg.result;
+        }
+        return undefined;
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (value) buf += dec.decode(value, { stream: !done }).replace(/\r\n/g, "\n");
+        const events = buf.split("\n\n");
+        buf = events.pop() || "";
+        for (const ev of events) {
+          const r = parse(ev);
+          if (r !== undefined) return r;
+        }
+        if (done) break;
+      }
+      if (buf.trim()) {
+        const r = parse(buf);
+        if (r !== undefined) return r;
+      }
+      throw new Error("SSE ended without response");
+    }
+    async initialize() {
+      const r = await this._post("initialize", {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "dev-host", version: "0.3.0" },
+      });
+      await this._post("notifications/initialized", null, true);
+      return r;
+    }
+    callTool(name, args) { return this._post("tools/call", { name, arguments: args || {} }); }
+    readResource(uri) { return this._post("resources/read", { uri }); }
+  }
+
+  // ---------- host state ----------
+  const TOOL_TO_APP = {
+    plan_meal: "meal-card",
+    manage_inventory: "inventory-card",
+    shop_for_meal: "cart-approval",
+    nutrition_status: "nutrition-status",
+  };
+  const lastResult = {};     // appId -> structuredContent
+  let lastPlanId = null;
+  let mcp = null;
+  let connected = false;
+
+  const statusEl = document.getElementById("conn-status");
+  const setStatus = (txt, cls) => { statusEl.textContent = txt; statusEl.className = cls || ""; };
+
+  function frameFor(appId) {
+    return document.querySelector(`.panel[data-app="${appId}"] iframe`);
+  }
+  function frameBySource(src) {
+    for (const f of document.querySelectorAll("iframe")) if (f.contentWindow === src) return f;
+    return null;
+  }
+  function pushResult(appId, result) {
+    if (!result) return;
+    const frame = frameFor(appId);
+    if (!frame?.contentWindow) return;
+    const payload = {
+      structuredContent: result.structuredContent || result,
+      content: result.content,
+    };
+    lastResult[appId] = payload;
+    frame.contentWindow.postMessage({
+      jsonrpc: "2.0", method: "ui/notifications/tool-result", params: payload,
+    }, "*");
+    log("out", "tool-result", `→ ${appId}`);
+  }
+
+  async function callTool(name, args) {
+    if (!connected) throw new Error("Not connected");
+    log("in", "tools/call", { name, args });
+    const result = await mcp.callTool(name, args);
+    const appId = TOOL_TO_APP[name];
+    if (appId) pushResult(appId, result);
+
+    // Auto-refresh dependent views after mutations
+    if (name === "plan_meal" && result?.structuredContent?.plan_id) {
+      lastPlanId = result.structuredContent.plan_id;
+    }
+    if (name === "shop_for_meal" && args?.confirm && args?.user_approved) {
+      const inv = await mcp.callTool("manage_inventory", { action: "list" });
+      pushResult("inventory-card", inv);
+    }
+    if (name === "nutrition_status" && args?.action === "log") {
+      const inv = await mcp.callTool("manage_inventory", { action: "list" });
+      pushResult("inventory-card", inv);
+      const nut = await mcp.callTool("nutrition_status", { action: "status" });
+      pushResult("nutrition-status", nut);
+    }
+    return result;
+  }
+
+  // ---------- iframe bridge ----------
+  window.addEventListener("message", async (event) => {
+    const msg = event.data;
+    if (!msg || msg.jsonrpc !== "2.0") return;
+    const frame = frameBySource(event.source);
+    const appId = frame?.closest(".panel")?.dataset.app;
+
+    if (msg.method === "ui/initialize" && msg.id != null) {
+      log("in", "ui/initialize", appId);
+      event.source.postMessage({
+        jsonrpc: "2.0", id: msg.id,
+        result: {
+          protocolVersion: "2025-06-18",
+          hostInfo: { name: "dev-host", version: "0.3.0" },
+          hostCapabilities: { tools: { call: true } },
+        },
+      }, "*");
+      return;
+    }
+    if (msg.method === "ui/notifications/initialized") {
+      log("in", "ui/initialized", appId);
+      // Replay last known result, if any
+      if (lastResult[appId]) {
+        event.source.postMessage({
+          jsonrpc: "2.0", method: "ui/notifications/tool-result", params: lastResult[appId],
+        }, "*");
+      } else {
+        // First time: seed with the current server state
+        try {
+          if (appId === "inventory-card") {
+            const r = await mcp?.callTool("manage_inventory", { action: "list" });
+            if (r) pushResult("inventory-card", r);
+          } else if (appId === "nutrition-status") {
+            const r = await mcp?.callTool("nutrition_status", { action: "status" });
+            if (r) pushResult("nutrition-status", r);
+          }
+        } catch (e) { log("err", "seed", String(e.message || e)); }
+      }
+      return;
+    }
+
+    if (msg.method === "tools/call" && msg.id != null) {
+      const { name, arguments: args } = msg.params || {};
+      try {
+        const result = await callTool(name, args);
+        event.source.postMessage({ jsonrpc: "2.0", id: msg.id, result }, "*");
+      } catch (err) {
+        log("err", "tools/call", String(err.message || err));
+        event.source.postMessage({
+          jsonrpc: "2.0", id: msg.id,
+          error: { code: -32000, message: String(err.message || err) },
+        }, "*");
+      }
+      return;
+    }
+  });
+
+  // ---------- controls ----------
+  const btnPlan = document.getElementById("btn-plan");
+  const btnInv  = document.getElementById("btn-inv");
+  const btnShop = document.getElementById("btn-shop");
+  const btnNut  = document.getElementById("btn-nut");
+
+  function enableButtons(on) {
+    [btnPlan, btnInv, btnShop, btnNut].forEach(b => b.disabled = !on);
+  }
+
+  document.getElementById("connect-btn").addEventListener("click", async () => {
+    const url = document.getElementById("mcp-url").value.trim();
+    setStatus("Connecting…");
+    enableButtons(false);
+    try {
+      mcp = new MCPClient(url);
+      await mcp.initialize();
+      connected = true;
+      setStatus("Connected ✓", "ok");
+      enableButtons(true);
+      log("in", "initialize", "Session established: " + mcp.sessionId);
+      // Seed the two read-only cards
+      try { pushResult("inventory-card", await mcp.callTool("manage_inventory", { action: "list" })); } catch {}
+      try { pushResult("nutrition-status", await mcp.callTool("nutrition_status", { action: "status" })); } catch {}
+    } catch (err) {
+      connected = false;
+      setStatus("Connection failed: " + (err.message || err), "err");
+      log("err", "initialize", String(err.message || err));
+    }
+  });
+
+  btnPlan.addEventListener("click", () => callTool("plan_meal", {
+    target: {
+      kcal: 600, kcal_min: null, kcal_max: null,
+      protein_g: 40, protein_g_min: null, protein_g_max: null,
+      carbs_g: 60, carbs_g_min: null, carbs_g_max: null,
+      fat_g: 20, fat_g_min: null, fat_g_max: null,
+    },
+    meal_type: null,
+    constraints: null,
+    request: null,
+    session_id: null,
+    answer: null,
+  }).catch(e => log("err", "plan_meal", String(e.message || e))));
+
+  btnInv.addEventListener("click", () => callTool("manage_inventory", { action: "list" })
+    .catch(e => log("err", "inventory", String(e.message || e))));
+
+  btnShop.addEventListener("click", () => {
+    if (!lastPlanId) { log("err", "shop_for_meal", "Run plan_meal first to get a plan_id"); return; }
+    callTool("shop_for_meal", { plan_id: lastPlanId, confirm: false })
+      .catch(e => log("err", "shop", String(e.message || e)));
+  });
+
+  btnNut.addEventListener("click", () => callTool("nutrition_status", { action: "status" })
+    .catch(e => log("err", "nutrition", String(e.message || e))));
+
+  function reload(appId) {
+    const f = frameFor(appId);
+    if (f) { f.src = f.src; log("in", "reload", appId); }
+  }
+  window.reload = reload;
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Cart approval</title>
+<link rel="stylesheet" href="shared.css"><body><div id=app class=sub>No cart yet.</div><p id=msg class=sub></p>
+<script src="shared.js"></script>
+<script>
+MCP.start((d,s)=>{
+ const c=d.cart||d,items=c.items||c.lines||[],tot=c.total??d.total,cur=c.currency||d.currency||'';
+ const done=/deliver|complete|decline|cancel|purchas/i.test(s.status||''),
+  a={plan_id:d.plan_id||c.plan_id,cart_id:d.cart_id||c.cart_id,approval_token:d.approval_token||c.approval_token};
+ $('#app').innerHTML=`<h1><span class=ic>🛒</span>Cart <span class="pill ${done?'ok':'warn'}">${esc(s.status||'')}</span></h1>
+  <p class=sub>${esc(s.spoken_summary)}</p>
+  ${items.map(i=>`<div class=row>📦<span class=n>${esc(nm(i))}</span><small>${esc(qty(i))}</small>
+   ${i.price!=null?`<b>${esc(i.price)}</b>`:''}</div>`).join('')}
+  ${tot!=null?`<div class=tile>💳<b>${esc(tot)} ${esc(cur)}</b><span>total · mock checkout, no charge</span></div>`:''}
+  ${items.length&&!done?`<div class=acts><button id=yes>✅ Approve</button><button id=no class=no>✖ Decline</button></div>`:''}${raw(d)}`;
+ $('#yes')?.addEventListener('click',e=>act(e.target,'shop_for_meal',{...a,confirm:true,user_approved:true}));
+ $('#no')?.addEventListener('click',e=>act(e.target,'shop_for_meal',{plan_id:a.plan_id,cart_id:a.cart_id,decline:true}));
+});
+</script>

@@ -1,0 +1,23 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Meal plan</title>
+<link rel="stylesheet" href="shared.css"><body><div id=app class=sub>Ask for a meal to see it here.</div><p id=msg class=sub></p>
+<script src="shared.js"></script>
+<script>
+const M=[['kcal','🔥','kcal'],['protein_g','🥩','protein'],['carbs_g','🍞','carbs'],['fat_g','🥑','fat']];
+MCP.start((d,s)=>{
+ const p=d.meal||{},m=d.verification?.totals||{};
+ const ok=s.status==='verified'&&d.verification?.passed!==false;
+ const items=p.ingredients||[],miss=d.missing_items||d.missing||[];
+ const q=d.question||d.clarification,id=d.plan_id||p.plan_id;
+ $('#app').innerHTML=`<h1><span class=ic>🍽️</span>${esc(p.name||p.title||'Your meal')}
+  <span class="pill ${ok?'ok':'warn'}">${ok?'verified':esc(s.status||'draft')}</span></h1>
+  <p class=sub>${esc(s.spoken_summary)}</p>
+  <div class=grid>${M.map(([k,i,l])=>`<div class=tile>${i}<b>${Math.round(m[k]??(k==='kcal'?m.calories:0)??0)}</b><span>${l}</span></div>`).join('')}</div>
+  ${items.map(i=>`<div class=row>🥘<span class=n>${esc(nm(i))}</span><small>${esc(qty(i))}</small></div>`).join('')}
+  ${miss.length?`<p class=sub>🛒 Missing: ${miss.map(i=>esc(nm(i))).join(', ')}</p>`:''}
+  ${q?`<p class=sub>❓ ${esc(typeof q==='string'?q:q.question||q.text)}</p><input id=ans placeholder="Your answer"><div class=acts><button id=send>Send</button></div>`:''}
+  ${ok&&id?`<div class=acts><button id=log>✅ Log it</button>${miss.length?'<button id=shop class=alt>🛒 Shop</button>':''}</div>`:''}${raw(d)}`;
+ $('#send')?.addEventListener('click',e=>act(e.target,'plan_meal',{target:d.target||{},session_id:d.session_id,answer:$('#ans').value}));
+ $('#log')?.addEventListener('click',e=>act(e.target,'nutrition_status',{action:'log',plan_id:id}));
+ $('#shop')?.addEventListener('click',e=>act(e.target,'shop_for_meal',{plan_id:id,confirm:false}));
+});
+</script>

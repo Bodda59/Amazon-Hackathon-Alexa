@@ -1,0 +1,16 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Inventory</title>
+<link rel="stylesheet" href="shared.css"><body><div id=app class=sub>Loading kitchen…</div><p id=msg class=sub></p>
+<script src="shared.js"></script>
+<script>
+const days=i=>{const v=i.days_left??i.days_until_expiry;if(v!=null)return v;
+ const x=i.expires??i.expiry??i.expires_on??i.expiry_date;return x?Math.ceil((new Date(x)-Date.now())/864e5):null};
+MCP.start((d,s)=>{
+ const items=d.items||d.inventory||d.expiring||[];
+ $('#app').innerHTML=`<h1><span class=ic>🧺</span>Kitchen <span class=pill>${items.length}</span></h1>
+  <p class=sub>${esc(s.spoken_summary)}</p>
+  ${items.map(i=>{const t=days(i);return `<div class=row>🥫<span class=n>${esc(nm(i))}</span><small>${esc(qty(i))}</small>
+   ${t==null?'':`<span class="pill ${t<=0?'bad':t<=3?'warn':'ok'}">${t<=0?'expired':t+'d'}</span>`}</div>`}).join('')||'<p class=sub>Nothing here yet.</p>'}
+  <div class=acts><button class=alt data-a=list>🧺 All</button><button class=alt data-a=expiring>⏳ Expiring</button></div>${raw(d)}`;
+ document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>act(b,'manage_inventory',{action:b.dataset.a}));
+});
+</script>
