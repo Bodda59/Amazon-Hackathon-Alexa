@@ -36,7 +36,7 @@ def build_asgi_app():
     app = mcp.streamable_http_app()
     return CORSMiddleware(
         app,
-        allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
+        allow_origins=["http://localhost:8000", "http://127.0.0.1:8000","http://localhost:8001"],
         allow_methods=["GET", "POST", "OPTIONS", "DELETE"],
         allow_headers=["*"],
         expose_headers=["Mcp-Session-Id", "mcp-session-id"],

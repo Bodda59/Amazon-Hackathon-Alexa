@@ -15,7 +15,7 @@ from meal_agent.config import settings
 from meal_agent.kg.neo4j_store import Neo4jUnavailable, get_neo4j_knowledge_graph
 from meal_agent.storage.domain_store import DomainStore
 from meal_agent.tools.kg_tools import check_meal_rules, cooking_yield_factor, suggest_substitutions
-
+from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 
@@ -98,6 +98,33 @@ def _mentioned_stock(text: str, stock: list[dict[str, Any]]) -> list[dict[str, A
         if words & {w for w in re.findall(r"[a-z]+", str(item.get("name", "")).casefold()) if len(w) >= 3}
     ]
 
+
+
+
+def _is_expired(expiry_str: str | None) -> bool:
+    """Return True if an item's expiration date is in the past."""
+    if not expiry_str:
+        return False
+    try:
+        today = datetime.now(timezone.utc).date()
+        expiry_date = datetime.strptime(str(expiry_str).split("T")[0], "%Y-%m-%d").date()
+        return expiry_date < today
+    except (ValueError, TypeError):
+        return False
+
+
+def _find_stock(name: str, inventory: list[dict[str, Any]]) -> dict[str, Any] | None:
+    wanted_words = set(re.findall(r"[a-z0-9]+", name.casefold()))
+    if not wanted_words:
+        return None
+
+    for item in inventory:
+        if _is_expired(item.get("expiry")):
+            continue
+        item_words = set(re.findall(r"[a-z0-9]+", str(item.get("name", "")).casefold()))
+        if item_words and (wanted_words <= item_words or item_words <= wanted_words):
+            return item
+    return None
 
 # ---------------------------------------------------------------------------
 # Candidate shaping
@@ -281,7 +308,15 @@ def _fallback_candidate(
         str(item.get("name", "")).casefold()
         for item in history[:4]
     }
-    stock = [item for item in inventory if float(item.get("available_grams", item.get("grams_estimate") or 0)) > 0]
+    
+    # 1. Filter out expired food AND items with no remaining availability
+    stock = [
+        item for item in inventory 
+        if float(item.get("available_grams", item.get("grams_estimate") or 0)) > 0
+        and not _is_expired(item.get("expiry"))
+    ]
+    
+    # 2. Sort remaining valid stock soonest-expiring first
     stock.sort(key=lambda item: (item.get("expiry") is None, item.get("expiry") or ""))
     names = [str(item.get("name", "")).strip() for item in stock]
     candidates = [name for name in names if name and name.casefold() not in excluded]
@@ -398,9 +433,12 @@ async def _llm_candidate(
     try:
         from services.LLMs import LLM_GPT
 
+        # Filter out expired items before providing context to the LLM
+        valid_inventory = [item for item in inventory if not _is_expired(item.get("expiry"))]
+
         state = {
             "request": request,
-            "inventory": [{key: item.get(key) for key in ("name", "available_grams", "grams_estimate", "expiry", "unit")} for item in inventory],
+            "inventory": [{key: item.get(key) for key in ("name", "available_grams", "grams_estimate", "expiry", "unit")} for item in valid_inventory],
             "constraints": constraints,
             "previous_verification_feedback": feedback,
             "recent_meals_to_avoid": history[:6],
@@ -410,7 +448,7 @@ async def _llm_candidate(
         prompt = (
             "Propose one safe culinary meal as JSON only. Schema: {name,ingredients:[{name,role,min_g,max_g}],"
             "cooking_method,instructions:[string],recipe_source}. role is one of protein, carbohydrate, fat, vegetable. "
-            "Use inventory ingredients first, especially ones with an early expiry. Choose a balanced set: at least one "
+            "Use unexpired inventory ingredients first, especially ones with an early upcoming expiry. Choose a balanced set: at least one "
             "protein source, one carbohydrate source and one fat source (for example an oil), plus optional vegetables, "
             "so each macro in constraints.nutrition_target can be adjusted independently. "
             "Honor any user note in the request (for example keep a named ingredient). "

@@ -248,10 +248,25 @@ class InventoryAgent:
         self,
         user_id: str,
         action: str,
-        free_text: str | None = None,
+        free_text: str | dict[str, Any] | list[Any] | None = None,
         image: InventoryImage | None = None,
         confirm: bool = False,
     ) -> dict[str, Any]:
+        # Convert dict or list passed by LLMs into valid JSON or natural text strings
+        if isinstance(free_text, (dict, list)):
+            if action in {"add", "update"} and confirm:
+                items = free_text if isinstance(free_text, list) else [free_text]
+                free_text = json.dumps(items)
+            elif action in {"reserve", "release"}:
+                free_text = json.dumps(free_text)
+            elif isinstance(free_text, dict):
+                name = free_text.get("name", "")
+                qty = free_text.get("quantity", free_text.get("available_grams", ""))
+                unit = free_text.get("unit", "g")
+                free_text = f"{qty}{unit} of {name}" if (name and qty) else json.dumps(free_text)
+            else:
+                free_text = json.dumps(free_text)
+
         if action == "list":
             items = await self.inventory_list(user_id)
             return {"status": "ok", "items": items, "spoken_summary": f"You have {len(items)} inventory items." if items else "Your inventory is empty."}
@@ -261,7 +276,7 @@ class InventoryAgent:
         if action == "barcode":
             if not free_text:
                 return {"status": "needs_user", "question": "Provide the product barcode to look it up.", "spoken_summary": "I need a barcode to look up this product."}
-            return {"status": "ok", "product": await self.lookup_barcode(free_text), "spoken_summary": "I found the packaged food nutrition record."}
+            return {"status": "ok", "product": await self.lookup_barcode(str(free_text)), "spoken_summary": "I found the packaged food nutrition record."}
         if action == "reserve":
             try:
                 reservations = json.loads(free_text or "[]")
@@ -359,7 +374,7 @@ async def list_inventory(user_id: str) -> list[dict[str, Any]]:
 async def manage_inventory(
     user_id: str,
     action: str,
-    free_text: str | None = None,
+    free_text: str | dict[str, Any] | list[Any] | None = None,
     image: InventoryImage | None = None,
     confirm: bool = False,
 ) -> dict[str, Any]:

@@ -19,3 +19,8 @@ dependencies = [
     "scipy>=1.15",
     "uvicorn>=0.53.0",
 ]
+
+[tool.uv.workspace]
+members = [
+    "Web-App/backend",
+]

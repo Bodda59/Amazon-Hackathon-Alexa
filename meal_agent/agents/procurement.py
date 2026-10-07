@@ -1,6 +1,5 @@
 """Approval-gated procurement using a mock-only retailer and SQLite audit trail."""
 
-from __future__ import annotations
 
 import asyncio
 import hashlib
@@ -8,7 +7,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
-
+import re
+import math 
 from meal_agent.adapters.retail.mock import MockRetailer
 from meal_agent.config import settings
 from meal_agent.storage.domain_store import DomainStore
@@ -34,24 +34,30 @@ class ProcurementAgent:
             else mock_checkout_enabled
         )
 
+    @staticmethod
+    def _words_match(stored: str, wanted: str) -> bool:
+        a, b = set(re.findall(r"[a-z0-9]+", stored.casefold())), set(re.findall(r"[a-z0-9]+", wanted.casefold()))
+        return bool(a and b) and (a <= b or b <= a)
+
     async def compute_gap(self, user_id: str, plan: dict[str, Any]) -> list[dict[str, Any]]:
         state = plan.get("state", plan)
         verification = state.get("verification") or {}
         portions = verification.get("ingredients") or (state.get("candidate") or {}).get("ingredients", [])
         inventory = await asyncio.to_thread(self.domain_store.list_inventory, user_id)
         gaps: list[dict[str, Any]] = []
+    
         for portion in portions:
             name = str(portion.get("name", ""))
             required = float(portion.get("grams", portion.get("min_g", 0)))
             match = next(
-                (item for item in inventory if str(item["name"]).casefold() in name.casefold()
-                 or name.casefold() in str(item["name"]).casefold()),
+                (item for item in inventory if ProcurementAgent._words_match(str(item.get("name", "")), name)),
                 None,
             )
             available = float(match.get("available_grams", 0)) if match else 0.0
             missing = max(0.0, required - available)
             if missing > 0:
                 gaps.append({"name": name, "required_g": required, "available_g": available, "missing_g": missing})
+    
         if not gaps:
             verification = state.get("verification") or {}
             for nutrient, amount in (verification.get("missing_capacity") or {}).items():
@@ -74,25 +80,33 @@ class ProcurementAgent:
     @staticmethod
     def score_product(product: dict[str, Any], query: str) -> float:
         """Deterministic score prioritizing ingredient match, low price, and pack size."""
-        terms = set(query.casefold().split())
-        product_terms = set(str(product.get("name", "")).casefold().split())
-        overlap = len(terms & product_terms) / max(len(terms), 1)
+        query_terms = set(re.findall(r"[a-z0-9]+", query.casefold()))
+        product_terms = set(re.findall(r"[a-z0-9]+", str(product.get("name", "")).casefold()))
+        
+        # Calculate term overlap accounting for singular/plural substrings
+        matches = sum(
+            1 for q in query_terms 
+            if any(q in p or p in q for p in product_terms)
+        )
+        overlap = matches / max(len(query_terms), 1)
+        
         price = float(product.get("price", float("inf")))
         pack_size = float(product.get("pack_size_g", 1))
         waste_penalty = max(0.0, pack_size - 300.0) / 10000.0
+        
         return overlap * 100.0 - price - waste_penalty
 
-    async def price_compare(self, query: str) -> list[dict[str, Any]]:
-        products = await self.product_search(query)
-        return sorted(products, key=lambda product: self.score_product(product, query), reverse=True)
+    import math
 
     async def cart_build(self, user_id: str, plan_id: str, missing: list[dict[str, Any]]) -> dict[str, Any]:
         selected_products: list[dict[str, Any]] = []
         trace_steps: list[dict[str, Any]] = [
             {"tool": "compute_gap", "inputs": {"plan_id": plan_id}, "output": {"missing": missing}}
         ]
+        
         for gap in missing:
-            matches: list[dict[str, Any]] = []
+            all_query_matches: list[dict[str, Any]] = []
+            
             for query in self._search_queries(gap):
                 products = await self.product_search(query)
                 scored = [
@@ -105,11 +119,23 @@ class ProcurementAgent:
                     "inputs": {"query": query},
                     "output": {"products": scored},
                 })
-                matches.extend(scored)
-            if matches:
-                query = self._search_queries(gap)[0]
-                matches.sort(key=lambda product: self.score_product(product, query), reverse=True)
-                selected_products.append(matches[0])
+                if scored:
+                    all_query_matches.append(scored[0])  # Top match for this query
+            
+            if all_query_matches:
+                # 1. Pick the best candidate across queries without rescoring against query[0]
+                all_query_matches.sort(key=lambda product: float(product["score"]), reverse=True)
+                best_product = all_query_matches[0]
+                
+                # 2. Calculate quantity based on missing weight vs package size
+                missing_g = float(gap.get("missing_g", 0))
+                pack_size_g = float(best_product.get("pack_size_g", 300)) or 300.0
+                quantity = max(1, math.ceil(missing_g / pack_size_g)) if missing_g > 0 else 1
+                
+                # 3. Add the required number of packages to the cart
+                for _ in range(quantity):
+                    selected_products.append(best_product)
+
         product_ids = [str(product["id"]) for product in selected_products]
         cart_data = await self.retailer.build_cart(product_ids)
         trace_steps.append({
@@ -119,6 +145,7 @@ class ProcurementAgent:
         })
         missing_key = ",".join(sorted(f"{item['name']}:{item.get('missing_g', item.get('missing_capacity', 0))}" for item in missing))
         idempotency_key = str(uuid5(NAMESPACE_URL, f"meal-cart:{user_id}:{plan_id}:{missing_key}"))
+        
         cart_id = await asyncio.to_thread(
             self.domain_store.create_cart,
             user_id,
