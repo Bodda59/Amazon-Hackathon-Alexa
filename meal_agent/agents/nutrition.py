@@ -1,6 +1,6 @@
 """Nutrition verifier specialist: trusted facts, yield conversions, solving and claims."""
 
-from __future__ import annotations
+
 
 import asyncio
 import re
@@ -54,6 +54,12 @@ class NutritionAgent:
                     misses.append(f"{key} outside tolerance of exact target")
         return not misses, misses
 
+    # nutrition.py
+import json
+
+class NutritionAgent:
+
+
     async def nutrition_lookup(self, food: str) -> dict[str, Any]:
         if self.knowledge_graph.configured:
             try:
@@ -61,9 +67,48 @@ class NutritionAgent:
                 if graph_profile is not None:
                     return graph_profile
             except Neo4jUnavailable:
-                # USDA/Open Food Facts remains the trusted fallback if Neo4j is down.
                 pass
-        return await self.food_data.lookup(food)
+        try:
+            return await self.food_data.lookup(food)
+        except Exception as exc:
+            # Missing API key is a config problem, not a "food not found" problem.
+            if "USDA_API_KEY" in str(exc) or not settings.enable_nutrition_llm_fallback:
+                raise
+            logger.warning("USDA/OFF miss for %r (%s); using LLM estimate", food, exc)
+            try:
+                return await self._llm_nutrition_estimate(food)
+            except Exception:
+                raise exc
+
+    async def _llm_nutrition_estimate(self, food: str) -> dict[str, Any]:
+        key = food.casefold().strip()
+        if key in self._estimate_cache:
+            return self._estimate_cache[key]
+        from services.LLMs import LLM_GPT
+
+        prompt = (
+            "Estimate typical nutrition for 100 g of the food below, as sold (raw/uncooked "
+            "unless the name says otherwise). Return ONLY JSON: "
+            '{"kcal":number,"protein_g":number,"carbs_g":number,"fat_g":number}.\n'
+            f"FOOD: {food}"
+        )
+        response = await asyncio.wait_for(LLM_GPT.ainvoke(prompt), timeout=8.0)
+        raw = str(getattr(response, "content", response)).strip()
+        raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        data = json.loads(raw)
+        per = {k: float(data[k]) for k in ("kcal", "protein_g", "carbs_g", "fat_g")}
+
+        # Sanity gates: reject impossible or internally inconsistent estimates.
+        macro_mass = per["protein_g"] + per["carbs_g"] + per["fat_g"]
+        atwater = 4 * per["protein_g"] + 4 * per["carbs_g"] + 9 * per["fat_g"]
+        if (min(per.values()) < 0 or macro_mass > 100.5 or per["kcal"] > 900
+                or abs(per["kcal"] - atwater) > max(0.2 * atwater, 15)):
+            raise ValueError(f"LLM nutrition estimate for {food!r} failed sanity checks")
+
+        entry = {"per_100g": per, "source": "llm_estimate",
+                 "source_id": f"llm:{key}", "estimated": True}
+        self._estimate_cache[key] = entry
+        return entry
 
     async def apply_yield_factors(
         self, food: str, method: str, grams: float, direction: str = "raw_to_cooked"
@@ -156,6 +201,7 @@ class NutritionAgent:
             tolerance_fraction=float(options.get("tolerance_fraction", 0.05)),
             tolerance_floor=float(options.get("tolerance_floor", 1.0)),
         )
+        solved["estimated_foods"] = [n for n in names if foods[n].get("estimated")]
         if not solved.get("passed"):
             suggestions = self._build_suggestions(
                 solved.get("deviation", {}), target.model_dump(mode="json", exclude_none=True), options
@@ -262,6 +308,7 @@ class NutritionAgent:
         return {
             "status": "verified" if passed else "unmet",
             "passed": passed,
+            "estimated_foods": solved.get("estimated_foods", []),
             "totals": solved.get("totals"),
             "deviation": deviations,
             "violations": violations,

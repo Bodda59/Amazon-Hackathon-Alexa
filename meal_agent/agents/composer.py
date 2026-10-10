@@ -137,6 +137,8 @@ def _normalize_bounds(candidate: CandidateMeal, inventory: list[dict[str, Any]])
         role = ingredient.role if ingredient.role in _ROLE_CAPS_G else _food_role(ingredient.name)
         cap = _ROLE_CAPS_G.get(role, 200.0)
         stock = _find_stock(ingredient.name, inventory)
+        if re.search(r"\b(oil|butter|ghee|lard)\b", ingredient.name, re.I):
+             cap = min(cap, 30.0)
         if stock is not None:
             available = float(stock.get("available_grams", stock.get("grams_estimate") or 0) or 0)
             ingredient.max_g = max(min(available, cap), 1.0) if available > 0 else cap

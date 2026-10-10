@@ -1,6 +1,8 @@
 """Bounded ReAct-style supervisor for meal planning."""
 
-from __future__ import annotations
+from meal_agent.graph.recipe import write_recipe
+from meal_agent.graph.target import balance_target
+
 
 import asyncio
 import copy
@@ -284,19 +286,29 @@ def _failure_result(state: MealPlanningState, reason: str) -> dict[str, Any]:
     return result
 
 
-def _verified_result(state: MealPlanningState, tools: Any) -> dict[str, Any]:
+def _verified_result(state, tools, recipe=None):
     verification = _verification_details(state.get("verification")) or {}
-    verified_ingredients = state.get("verification", {}).get("ingredients")
-    if verified_ingredients is None:
-        verified_ingredients = (state.get("candidate") or {}).get("ingredients", [])
+    ingredients = state.get("verification", {}).get("ingredients")
+    if ingredients is None:
+        ingredients = (state.get("candidate") or {}).get("ingredients", [])
+    candidate = state.get("candidate") or {}
+    title = (recipe or {}).get("title") or candidate.get("name") or "your meal"
+    t = verification.get("totals") or {}
+    amounts = ", ".join(f"{round(float(i['grams']))} grams of {i['name']}"
+                        for i in ingredients if float(i.get("grams", 0)) > 0)
+    spoken = (f"Here's {title}: {amounts}. About {round(t.get('kcal', 0))} calories, "
+              f"{round(t.get('protein_g', 0))} grams protein, {round(t.get('carbs_g', 0))} carbs "
+              f"and {round(t.get('fat_g', 0))} fat.")
+    estimated = verification.get("estimated_foods") or []
+    if estimated:
+        spoken += f" Note that the nutrition values for {', '.join(estimated)} are estimates."
     result = {
         "status": "verified",
-        "spoken_summary": "Your meal plan meets the requested nutrition targets and passed deterministic verification.",
-        "plan_id": state["plan_id"],
-        "session_id": state["session_id"],
-        "target": state["target"],
-        "plan": state["plan"],
-        "meal": {"ingredients": verified_ingredients},
+        "spoken_summary": spoken,
+        "plan_id": state["plan_id"], "session_id": state["session_id"],
+        "target": state["target"], "plan": state["plan"],
+        "meal": {"name": title, "ingredients": ingredients,
+                 "cooking_method": candidate.get("cooking_method"), "recipe": recipe},
         "verification": verification,
     }
     return tools.finish(True, result)
@@ -643,7 +655,14 @@ def build_meal_graph(
         state = copy.deepcopy(raw_state)
         state["tool_calls"] = state.get("tool_calls", 0) + 1
         if _verification_passed(state):
-            result = _verified_result(state, tools)
+            candidate = state.get("candidate") or {}
+            ingredients = (state.get("verification") or {}).get("ingredients") or candidate.get("ingredients", [])
+            recipe = await write_recipe(
+                candidate.get("name", "Meal"), ingredients,
+                candidate.get("cooking_method", ""), candidate.get("instructions", []),
+                diet=str((state.get("constraints") or {}).get("diet", "")),
+            )
+            result = _verified_result(state, tools, recipe)
             state["status"] = "verified"
             _mark_task(state, "finish_verified_plan", "completed")
         else:
@@ -722,6 +741,7 @@ async def run_plan_meal(
     max_wall_clock_seconds: float | None = None,
 ) -> dict[str, Any]:
     """Run the compiled StateGraph and return only deterministically verified meals."""
+    target, assumptions = balance_target(target)
     toolbox = tools or _tools()
     repair_limit = settings.max_repair_iterations if max_repairs is None else max_repairs
     tool_limit = settings.max_tool_calls if max_tool_calls is None else max_tool_calls
@@ -875,6 +895,9 @@ async def run_plan_meal(
     result = graph_state.get("final_result") or _failure_result(
         graph_state, "StateGraph terminated without a final result."
     )
+    if assumptions and result.get("status") == "verified":
+        result = {**result, "assumptions": assumptions,
+                  "spoken_summary": f"{result['spoken_summary']} {assumptions[0]}"}
     graph_state["final_result"] = result
     try:
         await toolbox.save_plan(graph_state)
