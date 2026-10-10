@@ -2,15 +2,16 @@
 
 Browser (voice + cards)  ->  this FastAPI app  ->  your MCP server (Streamable HTTP)
 
-* POST /api/transcribe    Speech to text with Groq whisper-large-v3-turbo (raw audio in the body)
+* POST /api/transcribe    Speech to text with Groq whisper-large-v3-turbo (raw audio in the body).
+                          Optional: without GROQ_API_KEY the app still runs and you type instead.
 * POST /api/chat          gpt-oss-120b on Ollama (via LangChain) picks MCP tools; streams events (SSE)
 * POST /api/tool/{name}   Call one MCP tool directly (planner form, Approve button, ...)
 * GET  /api/health        Checks the MCP connection and lists the tools it exposes
 * GET  /                  Serves the frontend
 
 .env:
-    GROQ_API_KEY       required (speech to text)
     OLLAMA_API_KEY     required for the hosted API at https://ollama.com
+    GROQ_API_KEY       optional (speech to text only; typed requests work without it)
     OLLAMA_BASE_URL    default https://ollama.com   (use http://localhost:11434 for a local Ollama)
     OLLAMA_MODEL       default gpt-oss:120b         (hosted API: no ":cloud" suffix)
     MCP_URL            default http://localhost:8005/mcp
@@ -34,7 +35,7 @@ from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from groq import AsyncGroq
-from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_ollama import ChatOllama
 from mcp import ClientSession
 from ollama import ResponseError as OllamaResponseError
@@ -51,12 +52,14 @@ MCP_URL = os.getenv("MCP_URL", "http://localhost:8005/mcp")
 
 # ----------------------------------------------------------------------- speech to text (Groq)
 # Whisper is a speech model, not a chat model, so it can't go through ChatGroq.
-# It uses Groq's audio transcription endpoint through the groq SDK (installed with langchain-groq).
+# It uses Groq's audio transcription endpoint through the groq SDK.
+# The key is optional: without it the app runs and /api/transcribe returns a clear 503.
 groq_api_key = os.getenv("GROQ_API_KEY")
-if not groq_api_key:
-    raise ValueError("Missing GROQ_API_KEY in .env file")
-
-groq_client = AsyncGroq(api_key=groq_api_key, base_url=os.getenv("GROQ_BASE_URL") or None)
+groq_client: AsyncGroq | None = (
+    AsyncGroq(api_key=groq_api_key, base_url=os.getenv("GROQ_BASE_URL") or None)
+    if groq_api_key
+    else None
+)
 STT_MODEL = os.getenv("STT_MODEL", "whisper-large-v3-turbo")
 STT_LANGUAGE = os.getenv("STT_LANGUAGE", "en")
 # Whisper spells domain words better when it is primed with them.
@@ -94,9 +97,13 @@ Details appear on screen as cards, so never read long lists aloud.
 when its status is verified. If a result needs clarification, ask the user that question, then call \
 plan_meal again with the same session_id and their answer.
 - Tool Call Rules:
-  * For `manage_inventory`, `free_text` MUST be a plain natural text string (e.g., '1000g of chicken breast'). Never pass a raw dictionary or list object.
-  * For `plan_meal`, always pass a valid `target` dict containing positive numbers for calories or macros (e.g. `{"calories": 2000, "protein_g": 120}`).
-- If the user gives no target for meal planning, ask for calories before planning.
+  * For `manage_inventory`, `free_text` MUST be a plain natural text string (e.g., '1000g of chicken breast'). \
+Never pass a raw dictionary or list object.
+  * For `plan_meal`, pass `target` as an object that uses exactly these keys: kcal, protein_g, carbs_g, fat_g. \
+A bound adds the suffix _min or _max, for example {"kcal": 600, "protein_g_min": 45}. \
+Never use other names such as calories or protein, and only include nutrients the user actually asked for.
+- If the user gives no calorie or macro target for meal planning, ask for one before planning. \
+Do not invent a target.
 - Shopping: prepare a cart with shop_for_meal using the plan_id. You cannot complete a purchase. \
 After preparing a cart, tell the user to review it on screen and tap Approve to order.
 - After a plan, offer exactly one useful next step."""
@@ -150,17 +157,61 @@ def for_llm(parsed: dict[str, Any]) -> str:
     return json.dumps(slim, default=str)[:12000]
 
 
+# --------------------------------------------------------------------------- tool-call sanitizing
+
+# The server's NutritionTarget only accepts kcal / protein_g / carbs_g / fat_g
+# (each optionally with _min or _max) and forbids any other key. Models often say
+# "calories" or "protein", so map the common names onto the exact fields.
+_TARGET_ALIASES = {
+    "kcal": "kcal",
+    "calories": "kcal",
+    "calorie": "kcal",
+    "cal": "kcal",
+    "cals": "kcal",
+    "energy": "kcal",
+    "protein": "protein_g",
+    "proteins": "protein_g",
+    "protein_g": "protein_g",
+    "carbs": "carbs_g",
+    "carb": "carbs_g",
+    "carbohydrate": "carbs_g",
+    "carbohydrates": "carbs_g",
+    "carbs_g": "carbs_g",
+    "fat": "fat_g",
+    "fats": "fat_g",
+    "fat_g": "fat_g",
+}
+
+
+def normalize_target(target: dict[str, Any]) -> dict[str, float]:
+    """Map model-chosen nutrient names onto the server's fields and drop invalid values."""
+    out: dict[str, float] = {}
+    for key, value in target.items():
+        name, suffix = str(key).strip().lower().replace(" ", "_"), ""
+        for candidate in ("_min", "_max"):
+            if name.endswith(candidate):
+                name, suffix = name[: -len(candidate)], candidate
+                break
+        base = _TARGET_ALIASES.get(name)
+        if base is None:
+            continue
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+            continue
+        out[base + suffix] = value
+    return out
+
+
 def sanitize_model_call(name: str, args: dict[str, Any]) -> dict[str, Any]:
     """Sanitize and normalize tool calls generated by the LLM before calling MCP."""
     args = dict(args)
 
-    # 1. Procurement safety
+    # 1. Procurement safety: the model can never approve a purchase.
     if name == "shop_for_meal":
         args.pop("approval_token", None)
         args["confirm"] = False
         args["user_approved"] = False
 
-    # 2. Fix manage_inventory argument type mismatches (dict/list -> string)
+    # 2. Fix manage_inventory argument type mismatches (dict/list -> string).
     elif name == "manage_inventory":
         free_text = args.get("free_text")
         if isinstance(free_text, (dict, list)):
@@ -171,18 +222,17 @@ def sanitize_model_call(name: str, args: dict[str, Any]) -> dict[str, Any]:
                 item_name = free_text.get("name", "")
                 qty = free_text.get("quantity", free_text.get("available_grams", ""))
                 unit = free_text.get("unit", "g")
-                args["free_text"] = f"{qty}{unit} of {item_name}" if (item_name and qty) else json.dumps(free_text)
+                args["free_text"] = (
+                    f"{qty}{unit} of {item_name}" if (item_name and qty) else json.dumps(free_text)
+                )
             else:
                 args["free_text"] = json.dumps(free_text)
 
-    # 3. Fix plan_meal target validation errors
+    # 3. plan_meal: use the server's exact field names. Never invent a default target;
+    #    an empty target is handled by asking the user (see chat()).
     elif name == "plan_meal":
-        target = args.get("target")
-        if not isinstance(target, dict) or not any(
-            isinstance(v, (int, float)) and v > 0 for v in target.values()
-        ):
-            # Inject a standard daily default target if model sends empty target {} or 0s
-            args["target"] = {"calories": 2000, "protein_g": 130}
+        raw = args.get("target")
+        args["target"] = normalize_target(raw) if isinstance(raw, dict) else {}
 
     return args
 
@@ -250,7 +300,7 @@ async def health():
             "tools": [t.name for t in listed.tools],
             "model": MODEL,
             "provider": "ollama",
-            "stt": STT_MODEL,
+            "stt": STT_MODEL if groq_client else "disabled (no GROQ_API_KEY)",
         }
     except BaseException as exc:  # noqa: BLE001 - surface any connection problem
         if isinstance(exc, (KeyboardInterrupt, SystemExit)):
@@ -264,6 +314,11 @@ async def health():
 @app.post("/api/transcribe")
 async def transcribe(request: Request):
     """Speech to text. POST the raw audio bytes (e.g. a MediaRecorder webm blob) as the body."""
+    if groq_client is None:
+        raise HTTPException(
+            503, "Speech-to-text is not configured (set GROQ_API_KEY in .env). Type your request instead."
+        )
+
     audio = await request.body()
     if not audio:
         raise HTTPException(400, "No audio received.")
@@ -303,6 +358,9 @@ async def transcribe(request: Request):
 async def call_tool_direct(name: str, args: dict[str, Any] = Body(...)):
     if name not in ALLOWED_TOOLS:
         raise HTTPException(404, f"Unknown tool: {name}")
+    # Direct calls (planner form) may also use friendly nutrient names.
+    if name == "plan_meal" and isinstance(args.get("target"), dict):
+        args = {**args, "target": normalize_target(args["target"])}
     try:
         async with mcp_session() as s:
             res = await s.call_tool(name, args)
@@ -360,14 +418,27 @@ async def chat(body: ChatIn):
                         args = sanitize_model_call(name, dict(call.get("args") or {}))
 
                         yield sse({"type": "tool_start", "id": call_id, "name": name, "args": args})
-                        try:
-                            parsed = parse_result(await session.call_tool(name, args))
-                        except Exception as exc:  # noqa: BLE001
+
+                        if name == "plan_meal" and not args.get("target"):
+                            # No usable target: don't call the server, let the model ask the user.
                             parsed = {
-                                "status": "error",
-                                "spoken_summary": f"The {name} tool failed: {exc}",
+                                "status": "needs_user",
+                                "spoken_summary": (
+                                    "No calorie or macro target was given. "
+                                    "Ask the user for one before planning."
+                                ),
                                 "data": {},
                             }
+                        else:
+                            try:
+                                parsed = parse_result(await session.call_tool(name, args))
+                            except Exception as exc:  # noqa: BLE001
+                                parsed = {
+                                    "status": "error",
+                                    "spoken_summary": f"The {name} tool failed: {exc}",
+                                    "data": {},
+                                }
+
                         yield sse(
                             {
                                 "type": "tool_result",

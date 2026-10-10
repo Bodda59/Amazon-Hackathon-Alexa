@@ -1,8 +1,10 @@
 """Nutrition verifier specialist: trusted facts, yield conversions, solving and claims."""
 
-
+from __future__ import annotations
 
 import asyncio
+import json
+import logging
 import re
 from typing import Any
 
@@ -14,11 +16,13 @@ from meal_agent.tools.food_data import FoodDataClient
 from meal_agent.tools.kg_tools import apply_yield_factor, check_meal_rules
 from meal_agent.tools.nutrition import atwater_consistency, compute_macros
 from meal_agent.tools.solver import solve_portions
-import logging
+
 logger = logging.getLogger(__name__)
+
 
 class NutritionAgent:
     """Ground meal verification in USDA/Open Food Facts records and symbolic checks."""
+
     def __init__(
         self,
         store: DomainStore,
@@ -28,8 +32,9 @@ class NutritionAgent:
         self.store = store
         self.food_data = food_data or FoodDataClient(store)
         self.knowledge_graph = knowledge_graph or get_neo4j_knowledge_graph()
-        
-        
+        # In-memory cache of LLM nutrition estimates (only used when USDA/OFF has no record).
+        self._estimate_cache: dict[str, dict[str, Any]] = {}
+
     @staticmethod
     def _meets_target(
         totals: dict[str, float],
@@ -54,33 +59,32 @@ class NutritionAgent:
                     misses.append(f"{key} outside tolerance of exact target")
         return not misses, misses
 
-    # nutrition.py
-import json
-
-class NutritionAgent:
-
-
     async def nutrition_lookup(self, food: str) -> dict[str, Any]:
+        """Neo4j first, then USDA/Open Food Facts, then (optionally) a sanity-checked LLM estimate."""
         if self.knowledge_graph.configured:
             try:
                 graph_profile = await self.knowledge_graph.nutrition_profile(food)
                 if graph_profile is not None:
                     return graph_profile
             except Neo4jUnavailable:
+                # USDA/Open Food Facts remains the trusted fallback if Neo4j is down.
                 pass
         try:
             return await self.food_data.lookup(food)
         except Exception as exc:
-            # Missing API key is a config problem, not a "food not found" problem.
-            if "USDA_API_KEY" in str(exc) or not settings.enable_nutrition_llm_fallback:
+            # A missing API key is a configuration problem, not a "food not found" problem.
+            fallback_enabled = getattr(settings, "enable_nutrition_llm_fallback", True)
+            if "USDA_API_KEY" in str(exc) or not fallback_enabled:
                 raise
-            logger.warning("USDA/OFF miss for %r (%s); using LLM estimate", food, exc)
+            logger.warning("USDA/OFF miss for %r (%s); trying LLM estimate", food, exc)
             try:
                 return await self._llm_nutrition_estimate(food)
             except Exception:
+                logger.warning("LLM nutrition estimate failed for %r", food, exc_info=True)
                 raise exc
 
     async def _llm_nutrition_estimate(self, food: str) -> dict[str, Any]:
+        """Last-resort per-100 g estimate. Rejected unless it passes basic physical sanity checks."""
         key = food.casefold().strip()
         if key in self._estimate_cache:
             return self._estimate_cache[key]
@@ -101,12 +105,20 @@ class NutritionAgent:
         # Sanity gates: reject impossible or internally inconsistent estimates.
         macro_mass = per["protein_g"] + per["carbs_g"] + per["fat_g"]
         atwater = 4 * per["protein_g"] + 4 * per["carbs_g"] + 9 * per["fat_g"]
-        if (min(per.values()) < 0 or macro_mass > 100.5 or per["kcal"] > 900
-                or abs(per["kcal"] - atwater) > max(0.2 * atwater, 15)):
+        if (
+            min(per.values()) < 0
+            or macro_mass > 100.5
+            or per["kcal"] > 900
+            or abs(per["kcal"] - atwater) > max(0.2 * atwater, 15)
+        ):
             raise ValueError(f"LLM nutrition estimate for {food!r} failed sanity checks")
 
-        entry = {"per_100g": per, "source": "llm_estimate",
-                 "source_id": f"llm:{key}", "estimated": True}
+        entry = {
+            "per_100g": per,
+            "source": "llm_estimate",
+            "source_id": f"llm:{key}",
+            "estimated": True,
+        }
         self._estimate_cache[key] = entry
         return entry
 
@@ -179,13 +191,19 @@ class NutritionAgent:
                         "passed": False,
                         "reason": f"A cooking method is required to convert cooked weight for {value.get('name', 'ingredient')!r}.",
                         "ingredients": [],
+                        "estimated_foods": [n for n in names if foods[n].get("estimated")],
                     }
                 try:
                     yield_factor = await self.apply_yield_factors(
                         str(value.get("name", "")), str(method), 100.0
                     ) / 100.0
                 except ValueError as exc:
-                    return {"passed": False, "reason": str(exc), "ingredients": []}
+                    return {
+                        "passed": False,
+                        "reason": str(exc),
+                        "ingredients": [],
+                        "estimated_foods": [n for n in names if foods[n].get("estimated")],
+                    }
                 value["per_100g"] = {
                     key: float(nutrient) / yield_factor
                     for key, nutrient in value["per_100g"].items()
@@ -258,25 +276,26 @@ class NutritionAgent:
                 "atwater": solved.get("atwater", {}),
                 "target_atwater": solved.get("target_atwater"),
                 "ingredients": solved.get("ingredients", []),
+                "estimated_foods": solved.get("estimated_foods", []),
             }
 
         portions = [IngredientPortion.model_validate(item) for item in solved["ingredients"]]
         checked_ingredients = [
-                {
-                    **portion.model_dump(mode="json"),
-                    "metadata": next(
-                        (candidate.get("metadata", {}) for candidate in ingredients
-                         if str(candidate.get("name", "")).casefold() == portion.name.casefold()),
-                        {},
-                    ),
-                    "category": next(
-                        (candidate.get("category", "") for candidate in ingredients
-                         if str(candidate.get("name", "")).casefold() == portion.name.casefold()),
-                        "",
-                    ),
-                }
-                for portion in portions
-            ]
+            {
+                **portion.model_dump(mode="json"),
+                "metadata": next(
+                    (candidate.get("metadata", {}) for candidate in ingredients
+                     if str(candidate.get("name", "")).casefold() == portion.name.casefold()),
+                    {},
+                ),
+                "category": next(
+                    (candidate.get("category", "") for candidate in ingredients
+                     if str(candidate.get("name", "")).casefold() == portion.name.casefold()),
+                    "",
+                ),
+            }
+            for portion in portions
+        ]
         rule_profile = {**profile, **(constraints or {})}
         rules = check_meal_rules(checked_ingredients, rule_profile)
         graph_rules: dict[str, Any] = {"status": "not_configured", "passed": True, "violations": [], "unknown_ingredients": []}
