@@ -204,11 +204,6 @@ Web-App/                    browser simulation of the Alexa+ experience
 tests/                      unittest suite
 ```
 
-## Tests
-
-```sh
-uv run python -m unittest discover -s tests
-```
 
 ## Troubleshooting
 

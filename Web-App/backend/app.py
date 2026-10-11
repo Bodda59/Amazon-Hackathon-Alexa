@@ -4,6 +4,8 @@ Browser (voice + cards)  ->  this FastAPI app  ->  your MCP server (Streamable H
 
 * POST /api/transcribe    Speech to text with Groq whisper-large-v3-turbo (raw audio in the body).
                           Optional: without GROQ_API_KEY the app still runs and you type instead.
+* POST /api/speak         Text to speech with Groq Orpheus (neural voice for the assistant's replies)
+* GET  /api/voices        Lists the neural voices (and whether speech is enabled)
 * POST /api/chat          gpt-oss-120b on Ollama (via LangChain) picks MCP tools; streams events (SSE)
 * POST /api/tool/{name}   Call one MCP tool directly (planner form, Approve button, ...)
 * GET  /api/health        Checks the MCP connection and lists the tools it exposes
@@ -17,6 +19,8 @@ Browser (voice + cards)  ->  this FastAPI app  ->  your MCP server (Streamable H
     MCP_URL            default http://localhost:8005/mcp
     STT_MODEL          default whisper-large-v3-turbo
     STT_LANGUAGE       default en (empty = auto-detect)
+    TTS_MODEL          default canopylabs/orpheus-v1-english
+    TTS_VOICE          default hannah  (autumn, diana, hannah, austin, daniel, troy)
 """
 
 from __future__ import annotations
@@ -32,7 +36,7 @@ import groq
 import httpx
 from dotenv import load_dotenv
 from fastapi import Body, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from groq import AsyncGroq
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
@@ -60,10 +64,19 @@ groq_client: AsyncGroq | None = (
     if groq_api_key
     else None
 )
-STT_MODEL = os.getenv("STT_MODEL", "whisper-large-v3-turbo")
+STT_MODEL = os.getenv("STT_MODEL", "whisper-large-v3")
 STT_LANGUAGE = os.getenv("STT_LANGUAGE", "en")
 # Whisper spells domain words better when it is primed with them.
 STT_PROMPT = "Meal planning: calories, protein, carbs, fat, macros, pantry, inventory, groceries."
+
+# ----------------------------------------------------------------------- text to speech (Groq Orpheus)
+# Neural voice for the assistant's replies. Uses the same GROQ_API_KEY as speech-to-text.
+# Orpheus accepts at most 200 characters per request and returns WAV, so the browser sends
+# one sentence-sized chunk at a time and plays them in order.
+TTS_MODEL = os.getenv("TTS_MODEL", "canopylabs/orpheus-v1-english")
+TTS_URL = os.getenv("GROQ_TTS_URL", "https://api.groq.com/openai/v1/audio/speech")
+TTS_VOICE = os.getenv("TTS_VOICE", "hannah")
+TTS_MAX_CHARS = 200
 
 # ----------------------------------------------------------------------- reasoning model (Ollama)
 ollama_bearer_token = os.getenv("OLLAMA_API_KEY", "")
@@ -301,6 +314,7 @@ async def health():
             "model": MODEL,
             "provider": "ollama",
             "stt": STT_MODEL if groq_client else "disabled (no GROQ_API_KEY)",
+            "tts": TTS_MODEL if groq_api_key else "disabled (no GROQ_API_KEY)",
         }
     except BaseException as exc:  # noqa: BLE001 - surface any connection problem
         if isinstance(exc, (KeyboardInterrupt, SystemExit)):
@@ -352,6 +366,40 @@ async def transcribe(request: Request):
     except groq.APIError as exc:
         raise HTTPException(502, f"Could not reach Groq: {exc.message}") from exc
     return {"text": (result.text or "").strip()}
+
+
+class SpeakIn(BaseModel):
+    text: str
+    voice: str | None = None
+
+
+@app.get("/api/voices")
+async def voices():
+    return {"enabled": bool(groq_api_key), "voices": TTS_VOICES, "default": TTS_VOICE, "model": TTS_MODEL}
+
+
+@app.post("/api/speak")
+async def speak(body: SpeakIn):
+    """Text to speech. Returns audio/wav for up to 200 characters of text."""
+    if not groq_api_key:
+        raise HTTPException(503, "Neural voice is not configured (set GROQ_API_KEY in .env).")
+    text = " ".join(body.text.split())
+    if not text:
+        raise HTTPException(400, "No text to speak.")
+    text = text[:TTS_MAX_CHARS]
+    voice = body.voice if body.voice in TTS_VOICES else TTS_VOICE
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r = await client.post(
+                TTS_URL,
+                headers={"Authorization": f"Bearer {groq_api_key}"},
+                json={"model": TTS_MODEL, "input": text, "voice": voice, "response_format": "wav"},
+            )
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"Could not reach Groq: {exc!r}") from exc
+    if r.status_code != 200:
+        raise HTTPException(502, f"Groq speech failed ({r.status_code}): {r.text[:300]}")
+    return Response(content=r.content, media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
 
 @app.post("/api/tool/{name}")
