@@ -1,0 +1,386 @@
+{
+  ".vscode/mcp.json": {
+    "mtime": 1790869109.8068614,
+    "seen": 1791904692.3779168,
+    "ast_hash": "6688cedef2ef56f2432a23fba4ed804f",
+    "semantic_hash": "6688cedef2ef56f2432a23fba4ed804f"
+  },
+  "Web-App/backend/app.py": {
+    "mtime": 1791731765.4005075,
+    "seen": 1791904692.377921,
+    "ast_hash": "ae50b12144c3e0b95afb5c3e40bd903c",
+    "semantic_hash": "ae50b12144c3e0b95afb5c3e40bd903c"
+  },
+  "Web-App/backend/main.py": {
+    "mtime": 1791359259.9042187,
+    "seen": 1791904692.377923,
+    "ast_hash": "8fc061e8e6bab4b89f17a796b9e92d2c",
+    "semantic_hash": "8fc061e8e6bab4b89f17a796b9e92d2c"
+  },
+  "Web-App/backend/pyproject.toml": {
+    "mtime": 1791360124.3517876,
+    "seen": 1791904692.3779242,
+    "ast_hash": "a2fc6a2402d5c99b74a3c44c4e5cb0f6",
+    "semantic_hash": "a2fc6a2402d5c99b74a3c44c4e5cb0f6"
+  },
+  "meal_agent/__init__.py": {
+    "mtime": 1790796690.1973288,
+    "seen": 1791904692.3779252,
+    "ast_hash": "49d08ed1e65dbb270c754f12c22cf71f",
+    "semantic_hash": "49d08ed1e65dbb270c754f12c22cf71f"
+  },
+  "meal_agent/adapters/__init__.py": {
+    "mtime": 1790796690.2666352,
+    "seen": 1791904692.3779259,
+    "ast_hash": "da5789cc1da384e6700a243b525007b1",
+    "semantic_hash": "da5789cc1da384e6700a243b525007b1"
+  },
+  "meal_agent/adapters/retail/__init__.py": {
+    "mtime": 1790796690.2706907,
+    "seen": 1791904692.3779268,
+    "ast_hash": "1f5c4f4decf9d3377a5956e30e14f3d7",
+    "semantic_hash": "1f5c4f4decf9d3377a5956e30e14f3d7"
+  },
+  "meal_agent/adapters/retail/base.py": {
+    "mtime": 1790796690.2832093,
+    "seen": 1791904692.377928,
+    "ast_hash": "70a25d208e84d43bc2ab87ab9602894a",
+    "semantic_hash": "70a25d208e84d43bc2ab87ab9602894a"
+  },
+  "meal_agent/adapters/retail/mock.py": {
+    "mtime": 1791366191.021776,
+    "seen": 1791904692.377929,
+    "ast_hash": "99e9ebcf9d492de708fe19e411be960a",
+    "semantic_hash": "99e9ebcf9d492de708fe19e411be960a"
+  },
+  "meal_agent/agents/__init__.py": {
+    "mtime": 1790796690.197471,
+    "seen": 1791904692.37793,
+    "ast_hash": "6f94a0f0cb0ce250fda81e34bb8b490e",
+    "semantic_hash": "6f94a0f0cb0ce250fda81e34bb8b490e"
+  },
+  "meal_agent/agents/composer.py": {
+    "mtime": 1791656123.0236075,
+    "seen": 1791904692.377931,
+    "ast_hash": "4083852ca1f03fad2d80aade6e3a99d2",
+    "semantic_hash": "4083852ca1f03fad2d80aade6e3a99d2"
+  },
+  "meal_agent/agents/inventory.py": {
+    "mtime": 1791454546.4858935,
+    "seen": 1791904692.377932,
+    "ast_hash": "a2a4b3bee9266ba3dd3e11c6af326466",
+    "semantic_hash": "a2a4b3bee9266ba3dd3e11c6af326466"
+  },
+  "meal_agent/agents/nutrition.py": {
+    "mtime": 1791660775.7320993,
+    "seen": 1791904692.377933,
+    "ast_hash": "98b4ce3a1a37181cf14a6fc70c467b5f",
+    "semantic_hash": "98b4ce3a1a37181cf14a6fc70c467b5f"
+  },
+  "meal_agent/agents/procurement.py": {
+    "mtime": 1791454546.4866998,
+    "seen": 1791904692.377934,
+    "ast_hash": "986a8e5c8ada7a9fbd8a758f4279ab26",
+    "semantic_hash": "986a8e5c8ada7a9fbd8a758f4279ab26"
+  },
+  "meal_agent/agents/tracking.py": {
+    "mtime": 1790866627.1407356,
+    "seen": 1791904692.377934,
+    "ast_hash": "9180047cd919f719fd2fd3c35a2b1c21",
+    "semantic_hash": "9180047cd919f719fd2fd3c35a2b1c21"
+  },
+  "meal_agent/agents/verifier.py": {
+    "mtime": 1790796690.197639,
+    "seen": 1791904692.3779352,
+    "ast_hash": "2d91886c7d6597460762f0e2f65662d0",
+    "semantic_hash": "2d91886c7d6597460762f0e2f65662d0"
+  },
+  "meal_agent/config.py": {
+    "mtime": 1791097774.836111,
+    "seen": 1791904692.377936,
+    "ast_hash": "2aad37cb5c1b91fda9145060f82741ed",
+    "semantic_hash": "2aad37cb5c1b91fda9145060f82741ed"
+  },
+  "meal_agent/graph/__init__.py": {
+    "mtime": 1790796474.350739,
+    "seen": 1791904692.3779368,
+    "ast_hash": "b071a48e935e12f71b8abb15e6e8a140",
+    "semantic_hash": "b071a48e935e12f71b8abb15e6e8a140"
+  },
+  "meal_agent/graph/guards.py": {
+    "mtime": 1790798260.0612411,
+    "seen": 1791904692.377938,
+    "ast_hash": "462762c37420d012670b51d5282c0692",
+    "semantic_hash": "462762c37420d012670b51d5282c0692"
+  },
+  "meal_agent/graph/recipe.py": {
+    "mtime": 1791656142.389696,
+    "seen": 1791904692.377939,
+    "ast_hash": "f77a3be0939def7c36921f6469d1b1e9",
+    "semantic_hash": "f77a3be0939def7c36921f6469d1b1e9"
+  },
+  "meal_agent/graph/state.py": {
+    "mtime": 1790800155.5602465,
+    "seen": 1791904692.37794,
+    "ast_hash": "038ae2617a2a8921668d8c8df177d9e0",
+    "semantic_hash": "038ae2617a2a8921668d8c8df177d9e0"
+  },
+  "meal_agent/graph/supervisor.py": {
+    "mtime": 1791656496.2591832,
+    "seen": 1791904692.377941,
+    "ast_hash": "795a81da71932e78176c177fb528b9f0",
+    "semantic_hash": "795a81da71932e78176c177fb528b9f0"
+  },
+  "meal_agent/graph/target.py": {
+    "mtime": 1791655914.278874,
+    "seen": 1791904692.377942,
+    "ast_hash": "a265a71b959fafccf99579668688441a",
+    "semantic_hash": "a265a71b959fafccf99579668688441a"
+  },
+  "meal_agent/graph/tools.py": {
+    "mtime": 1791211624.4294822,
+    "seen": 1791904692.377943,
+    "ast_hash": "b0afc9ab27fbd32fc3282c244951c795",
+    "semantic_hash": "b0afc9ab27fbd32fc3282c244951c795"
+  },
+  "meal_agent/kg/__init__.py": {
+    "mtime": 1790796690.3985243,
+    "seen": 1791904692.377944,
+    "ast_hash": "7ab70f42a118666f0e14f0bd6c8748ed",
+    "semantic_hash": "7ab70f42a118666f0e14f0bd6c8748ed"
+  },
+  "meal_agent/kg/neo4j_store.py": {
+    "mtime": 1790801196.158156,
+    "seen": 1791904692.3779452,
+    "ast_hash": "1932046fd5c8cd745730701e575f5d29",
+    "semantic_hash": "1932046fd5c8cd745730701e575f5d29"
+  },
+  "meal_agent/schemas.py": {
+    "mtime": 1790801196.0593898,
+    "seen": 1791904692.3779461,
+    "ast_hash": "dee23fea89dbd010fea8aeb5895b4ffe",
+    "semantic_hash": "dee23fea89dbd010fea8aeb5895b4ffe"
+  },
+  "meal_agent/server.py": {
+    "mtime": 1791454546.4874504,
+    "seen": 1791904692.3779469,
+    "ast_hash": "3bc06006717505ddfa4d25ae3ef1d19d",
+    "semantic_hash": "3bc06006717505ddfa4d25ae3ef1d19d"
+  },
+  "meal_agent/storage/__init__.py": {
+    "mtime": 1790796690.3715873,
+    "seen": 1791904692.3779478,
+    "ast_hash": "be7285aed2cf6708c2bf80dea307771e",
+    "semantic_hash": "be7285aed2cf6708c2bf80dea307771e"
+  },
+  "meal_agent/storage/domain_store.py": {
+    "mtime": 1791449450.3170702,
+    "seen": 1791904692.377949,
+    "ast_hash": "c7f1c522f5a72b05e617e58587e7fb98",
+    "semantic_hash": "c7f1c522f5a72b05e617e58587e7fb98"
+  },
+  "meal_agent/storage/repositories.py": {
+    "mtime": 1790796690.3850808,
+    "seen": 1791904692.377949,
+    "ast_hash": "f1012767ad951f929c86d2b743d753a5",
+    "semantic_hash": "f1012767ad951f929c86d2b743d753a5"
+  },
+  "meal_agent/storage/workflow_store.py": {
+    "mtime": 1790866627.0875819,
+    "seen": 1791904692.37795,
+    "ast_hash": "2e4dc38fea4df9d2f29bad0513150017",
+    "semantic_hash": "2e4dc38fea4df9d2f29bad0513150017"
+  },
+  "meal_agent/tools/__init__.py": {
+    "mtime": 1790796690.1973858,
+    "seen": 1791904692.377951,
+    "ast_hash": "2c141675f251e56be89f4b3749877f0e",
+    "semantic_hash": "2c141675f251e56be89f4b3749877f0e"
+  },
+  "meal_agent/tools/food_data.py": {
+    "mtime": 1790800155.5934405,
+    "seen": 1791904692.377952,
+    "ast_hash": "98d62d8e83ea5f057244dce8b6242d5f",
+    "semantic_hash": "98d62d8e83ea5f057244dce8b6242d5f"
+  },
+  "meal_agent/tools/kg_tools.py": {
+    "mtime": 1790800155.5975392,
+    "seen": 1791904692.377953,
+    "ast_hash": "45d367b35f9ad451859608508d4fd3a1",
+    "semantic_hash": "45d367b35f9ad451859608508d4fd3a1"
+  },
+  "meal_agent/tools/neo4j_tools.py": {
+    "mtime": 1790801196.1865988,
+    "seen": 1791904692.377954,
+    "ast_hash": "abbae23ee42b0d805749d917f9ae867f",
+    "semantic_hash": "abbae23ee42b0d805749d917f9ae867f"
+  },
+  "meal_agent/tools/nutrition.py": {
+    "mtime": 1791211068.9903114,
+    "seen": 1791904692.377955,
+    "ast_hash": "5c6ad91272b2411fddc7a2308e921b24",
+    "semantic_hash": "5c6ad91272b2411fddc7a2308e921b24"
+  },
+  "meal_agent/tools/solver.py": {
+    "mtime": 1791101021.7492774,
+    "seen": 1791904692.3779562,
+    "ast_hash": "88babe6df33803ab62a30a3283476b46",
+    "semantic_hash": "88babe6df33803ab62a30a3283476b46"
+  },
+  "meal_agent/tools/units.py": {
+    "mtime": 1790796690.4177616,
+    "seen": 1791904692.377957,
+    "ast_hash": "aec5b6cc4ad42c8b42fbb9fe932c2939",
+    "semantic_hash": "aec5b6cc4ad42c8b42fbb9fe932c2939"
+  },
+  "pyproject.toml": {
+    "mtime": 1791359259.9116468,
+    "seen": 1791904692.3779578,
+    "ast_hash": "8233452ca6f604996e43238ea85549f8",
+    "semantic_hash": "8233452ca6f604996e43238ea85549f8"
+  },
+  "seed_inventory.py": {
+    "mtime": 1791096778.6397295,
+    "seen": 1791904692.3779578,
+    "ast_hash": "99b9abab2e6e3bc88573960d7658cdd4",
+    "semantic_hash": "99b9abab2e6e3bc88573960d7658cdd4"
+  },
+  "services/LLMs.py": {
+    "mtime": 1790161406.9336398,
+    "seen": 1791904692.377959,
+    "ast_hash": "7cde1a00d0e2b9258ae12c1e72fcb62f",
+    "semantic_hash": "7cde1a00d0e2b9258ae12c1e72fcb62f"
+  },
+  "services/__init__.py": {
+    "mtime": 1790796690.358006,
+    "seen": 1791904692.37796,
+    "ast_hash": "b624dc5f523624bcf08cd23ae9b86df4",
+    "semantic_hash": "b624dc5f523624bcf08cd23ae9b86df4"
+  },
+  "tests/test_integrations.py": {
+    "mtime": 1791095314.8650796,
+    "seen": 1791904692.3779619,
+    "ast_hash": "187d366dfb10180b7a5e0c1e7e1806dc",
+    "semantic_hash": "187d366dfb10180b7a5e0c1e7e1806dc"
+  },
+  "tests/test_mcp_surface.py": {
+    "mtime": 1790869109.8264787,
+    "seen": 1791904692.3779619,
+    "ast_hash": "def2b5a923d22ea727d26917ba5b8ca1",
+    "semantic_hash": "def2b5a923d22ea727d26917ba5b8ca1"
+  },
+  "tests/test_neo4j.py": {
+    "mtime": 1790801196.1743348,
+    "seen": 1791904692.377963,
+    "ast_hash": "8bf447ab20483d39583d7840a1fc93ce",
+    "semantic_hash": "8bf447ab20483d39583d7840a1fc93ce"
+  },
+  "tests/test_nutrition.py": {
+    "mtime": 1790797575.2237024,
+    "seen": 1791904692.377964,
+    "ast_hash": "0bf72a06f328f8dfbf24f50561d44ec8",
+    "semantic_hash": "0bf72a06f328f8dfbf24f50561d44ec8"
+  },
+  "tests/test_orchestrator.py": {
+    "mtime": 1791095314.830144,
+    "seen": 1791904692.377965,
+    "ast_hash": "da3e2ba63d841f12d46728c72080eb66",
+    "semantic_hash": "da3e2ba63d841f12d46728c72080eb66"
+  },
+  "ui/shared.js": {
+    "mtime": 1791217992.913575,
+    "seen": 1791904692.3779662,
+    "ast_hash": "0beec2914a84701598744470c5a1ed73",
+    "semantic_hash": "0beec2914a84701598744470c5a1ed73"
+  },
+  ".github/copilot-instructions.md": {
+    "mtime": 1790796690.3450196,
+    "seen": 1791904692.3779671,
+    "ast_hash": "3b390bec13f31817aa23cffc416c7c4e",
+    "semantic_hash": "3b390bec13f31817aa23cffc416c7c4e"
+  },
+  "README.md": {
+    "mtime": 1791730621.9467535,
+    "seen": 1791904692.377968,
+    "ast_hash": "2222b91acca0ad03933224028a69ce87",
+    "semantic_hash": "2222b91acca0ad03933224028a69ce87"
+  },
+  "Web-App/README.md": {
+    "mtime": 1791359354.769975,
+    "seen": 1791904692.3779688,
+    "ast_hash": "6cbb2a42ee638d16e076566d5a9cbed3",
+    "semantic_hash": "6cbb2a42ee638d16e076566d5a9cbed3"
+  },
+  "Web-App/backend/requirements.txt": {
+    "mtime": 1791359170.734239,
+    "seen": 1791904692.37797,
+    "ast_hash": "76e4482652f6d51edc11ab67334f698b",
+    "semantic_hash": "76e4482652f6d51edc11ab67334f698b"
+  },
+  "Web-App/frontend/index.html": {
+    "mtime": 1791731819.4885144,
+    "seen": 1791904692.37797,
+    "ast_hash": "8f08e6a29a9dfb021b8aeb480b718d9b",
+    "semantic_hash": "8f08e6a29a9dfb021b8aeb480b718d9b"
+  },
+  "agentic-meal-macro-architecture.md": {
+    "mtime": 1790795120.2355733,
+    "seen": 1791904692.377971,
+    "ast_hash": "714e673219b2d5f79810c5c53dcb41a1",
+    "semantic_hash": "714e673219b2d5f79810c5c53dcb41a1"
+  },
+  "db/README.md": {
+    "mtime": 1790866627.0639176,
+    "seen": 1791904692.377972,
+    "ast_hash": "7e7efeff5ca4d80d6c990bb895513208",
+    "semantic_hash": "7e7efeff5ca4d80d6c990bb895513208"
+  },
+  "evals/README.md": {
+    "mtime": 1790796690.3211067,
+    "seen": 1791904692.377973,
+    "ast_hash": "640aee0ae2d9f145e74fed338292ef08",
+    "semantic_hash": "640aee0ae2d9f145e74fed338292ef08"
+  },
+  "meal_agent/kg/README.md": {
+    "mtime": 1790801196.122563,
+    "seen": 1791904692.377974,
+    "ast_hash": "d644b1efbd5594c5d7f05469016ec826",
+    "semantic_hash": "d644b1efbd5594c5d7f05469016ec826"
+  },
+  "ui/README.md": {
+    "mtime": 1790797575.2377982,
+    "seen": 1791904692.377975,
+    "ast_hash": "d35b92048b55c0df2b77f46f98b43969",
+    "semantic_hash": "d35b92048b55c0df2b77f46f98b43969"
+  },
+  "ui/cart-approval.html": {
+    "mtime": 1791217939.0963137,
+    "seen": 1791904692.3779762,
+    "ast_hash": "fe580d63af1582333d4bad47a71fda63",
+    "semantic_hash": "fe580d63af1582333d4bad47a71fda63"
+  },
+  "ui/dev-host.html": {
+    "mtime": 1791271776.4089305,
+    "seen": 1791904692.3779771,
+    "ast_hash": "642ef12d50c014f4c72e759b3d72344b",
+    "semantic_hash": "642ef12d50c014f4c72e759b3d72344b"
+  },
+  "ui/inventory-card.html": {
+    "mtime": 1791217909.0217366,
+    "seen": 1791904692.377978,
+    "ast_hash": "517eff00e550d7a30a4f836d1511a9eb",
+    "semantic_hash": "517eff00e550d7a30a4f836d1511a9eb"
+  },
+  "ui/meal-card.html": {
+    "mtime": 1791218293.2124214,
+    "seen": 1791904692.3779788,
+    "ast_hash": "e5bb0795e9cee697c6bf687b6757cbd3",
+    "semantic_hash": "e5bb0795e9cee697c6bf687b6757cbd3"
+  },
+  "ui/nutrition-status.html": {
+    "mtime": 1791217925.4070055,
+    "seen": 1791904692.37798,
+    "ast_hash": "8d40de0567d39f4be445ec65ac78fa2b",
+    "semantic_hash": "8d40de0567d39f4be445ec65ac78fa2b"
+  }
+}

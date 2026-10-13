@@ -75,7 +75,8 @@ STT_PROMPT = "Meal planning: calories, protein, carbs, fat, macros, pantry, inve
 # one sentence-sized chunk at a time and plays them in order.
 TTS_MODEL = os.getenv("TTS_MODEL", "canopylabs/orpheus-v1-english")
 TTS_URL = os.getenv("GROQ_TTS_URL", "https://api.groq.com/openai/v1/audio/speech")
-TTS_VOICE = os.getenv("TTS_VOICE", "hannah")
+TTS_VOICES = ["daniel", "austin", "troy", "autumn", "diana", "hannah"]
+TTS_VOICE = os.getenv("TTS_VOICE", "daniel")
 TTS_MAX_CHARS = 200
 
 # ----------------------------------------------------------------------- reasoning model (Ollama)

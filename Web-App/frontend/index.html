@@ -3,454 +3,1682 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Meal & Macro Planner · Alexa+ simulation</title>
+<title>Alexa+ Culinary OS · Meal &amp; Macro Agent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/*
-  Design notes
-  - Chalkboard green kitchen display. The one memorable object is the verified meal,
-    drawn as a real nutrition-facts label (white paper, hard black rules) with a stamp.
-  - Two families: Archivo (wide for headings, normal for UI and numbers) and
-    Newsreader (the assistant's voice and recipe prose).
-*/
-:root{
+:root {
   color-scheme: dark;
-  --board:#1a2823;
-  --board-2:#213430;
-  --board-3:#2b423b;
-  --line:#3b5249;
-  --chalk:#eef1e6;
-  --muted:#a6b8ac;
-  --saffron:#f5b83d;
-  --tomato:#ff6f4e;
-  --sage:#9bd6a6;
-  --sky:#7cc4ff;
-  --ok:#7fd68f;
-  --bad:#ff7a5c;
+  --bg-space: #090e13;
+  --bg-card: rgba(16, 24, 32, 0.78);
+  --bg-card-hover: rgba(22, 34, 46, 0.9);
+  --bg-elevated: rgba(28, 42, 56, 0.75);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-bright: rgba(0, 210, 255, 0.35);
+  --border-emerald: rgba(16, 185, 129, 0.4);
 
-  --paper:#f8f7f2;
-  --ink:#17231d;
-  --ink-soft:#56635b;
-  --p-ink:#c4432a;
-  --c-ink:#9a6700;
-  --f-ink:#2b7a42;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
 
-  --display:"Archivo","Arial Black","Helvetica Neue",Arial,sans-serif;
-  --body:"Archivo","Helvetica Neue",Arial,system-ui,sans-serif;
-  --voice:"Newsreader",Georgia,"Times New Roman",serif;
-}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%}
-body{
-  background:var(--board);
-  color:var(--chalk);
-  font:450 16px/1.5 var(--body);
-  -webkit-font-smoothing:antialiased;
-}
-button,input,select,textarea{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--saffron);outline-offset:2px}
-.num{font-variant-numeric:tabular-nums}
+  --alexa-cyan: #00d2ff;
+  --alexa-blue: #0084ff;
+  --alexa-glow: rgba(0, 210, 255, 0.25);
 
-.app{display:grid;grid-template-rows:auto minmax(0,1fr);height:100dvh;max-width:1560px;margin:0 auto}
+  --emerald: #10b981;
+  --emerald-glow: rgba(16, 185, 129, 0.25);
+  --amber: #f59e0b;
+  --amber-glow: rgba(245, 158, 11, 0.22);
+  --coral: #f43f5e;
+  --sky: #38bdf8;
+  --indigo: #6366f1;
 
-/* ------------------------------------------------------------ top bar */
-.top{
-  display:flex;align-items:center;justify-content:space-between;gap:20px;
-  padding:16px 28px;
-}
-.brand h1{
-  margin:0;font:800 22px/1.05 var(--display);font-stretch:118%;letter-spacing:-.015em;
-}
-.brand p{margin:3px 0 0;color:var(--muted);font-size:14px}
-.top-right{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:flex-end}
-.lamps{display:flex;gap:6px;flex-wrap:wrap}
-.lamp{
-  display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:999px;
-  border:1px solid var(--line);font-size:13px;color:var(--muted);
-  transition:color .25s,border-color .25s,background .25s;
-}
-.lamp::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--line);transition:background .25s,box-shadow .25s}
-.lamp.on{color:var(--chalk);border-color:var(--saffron);background:rgba(245,184,61,.1)}
-.lamp.on::before{background:var(--saffron);box-shadow:0 0 0 4px rgba(245,184,61,.2)}
-.status{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
-.status .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
-.status[data-ok="true"] .dot{background:var(--ok)}
-.status[data-ok="false"] .dot{background:var(--bad)}
-.ghost{
-  background:transparent;border:1px solid var(--line);border-radius:999px;
-  padding:6px 14px;cursor:pointer;font-size:14px;
-}
-.ghost:hover{border-color:var(--saffron)}
+  --p-color: #f43f5e;
+  --c-color: #f59e0b;
+  --f-color: #10b981;
 
-/* ------------------------------------------------------------ layout */
-.main{
-  display:grid;grid-template-columns:minmax(340px,5fr) minmax(0,7fr);
-  gap:20px;padding:4px 28px 24px;min-height:0;
-}
-.talk,.display{min-height:0;display:flex;flex-direction:column}
+  --font-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-/* ------------------------------------------------------------ conversation */
-.talk{background:var(--board-2);border:1px solid var(--line);border-radius:28px;overflow:hidden}
-.messages{flex:1;overflow:auto;padding:26px 26px 10px;display:flex;flex-direction:column;gap:14px}
-.greeting{margin:auto 0 0}
-.greeting h2{
-  margin:0 0 12px;font:800 clamp(34px,3.6vw,52px)/1.02 var(--display);
-  font-stretch:122%;letter-spacing:-.025em;
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 8px;
+  --radius-full: 9999px;
 }
-.greeting p{margin:0;max-width:34ch;font:400 20px/1.5 var(--voice);color:var(--muted)}
 
-.msg.user{
-  align-self:flex-end;max-width:86%;background:var(--board-3);border-radius:18px 18px 4px 18px;
-  padding:9px 15px;font-size:15px;overflow-wrap:anywhere;
-}
-.msg.bot{
-  align-self:flex-start;max-width:46ch;font:400 20px/1.5 var(--voice);
-  overflow-wrap:anywhere;
-}
-.msg.err{
-  align-self:flex-start;max-width:90%;border:1px solid var(--bad);background:rgba(255,122,92,.1);
-  border-radius:14px;padding:10px 14px;font-size:15px;
-}
-.activity{align-self:flex-start;display:flex;flex-wrap:wrap;gap:6px;font-size:13px;color:var(--muted)}
-.chip{
-  display:inline-flex;align-items:center;gap:7px;padding:3px 11px;border-radius:999px;
-  border:1px solid var(--line);
-}
-.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--saffron)}
-.chip.done::before{background:var(--ok)}
-.chip.failed::before{background:var(--bad)}
-.chip.running::before{animation:blink 1s infinite}
-@keyframes blink{50%{opacity:.25}}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; width: 100%; }
 
-.working{align-self:flex-start;display:flex;align-items:center;gap:12px;color:var(--muted);font-size:15px}
-.wbar{position:relative;width:46px;height:5px;border-radius:3px;background:var(--board-3);overflow:hidden;flex:none}
-.wbar::after{
-  content:"";position:absolute;inset:0 auto 0 0;width:40%;border-radius:3px;background:var(--saffron);
-  animation:slide 1.2s ease-in-out infinite;
+body {
+  background: var(--bg-space);
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(0, 210, 255, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(16, 185, 129, 0.07) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.04) 0%, transparent 60%);
+  color: var(--text-main);
+  font: 400 15px/1.55 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
 }
-@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
 
-.suggest{display:flex;flex-wrap:wrap;gap:8px;padding:10px 26px 0}
-.suggest button{
-  border:1px solid var(--line);background:transparent;border-radius:999px;
-  padding:6px 13px;font-size:14px;color:var(--muted);cursor:pointer;text-align:left;
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
 }
-.suggest button:hover{color:var(--chalk);border-color:var(--saffron)}
 
-.composer{display:flex;align-items:center;gap:14px;padding:16px 20px 20px}
-.composer input{
-  flex:1;min-width:0;background:var(--board);border:1px solid var(--line);
-  border-radius:999px;padding:14px 20px;
+.num {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
 }
-.composer input::placeholder{color:var(--muted)}
-.send{
-  border:0;border-radius:999px;background:var(--saffron);color:#2a1c00;
-  font-weight:700;padding:14px 22px;cursor:pointer;
-}
-.send:disabled{opacity:.45;cursor:default}
 
-/* The voice ring */
-.orb{
-  position:relative;flex:none;width:68px;height:68px;border-radius:50%;
-  border:0;background:var(--board);cursor:pointer;padding:0;
+/* ------------------------------------------------------------- Layout */
+.app {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100dvh;
+  max-width: 1720px;
+  margin: 0 auto;
 }
-.orb::before{
-  content:"";position:absolute;inset:0;border-radius:50%;
-  background:conic-gradient(from 0deg,var(--saffron),var(--tomato),var(--saffron));
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px));
-          mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px));
-  opacity:.6;
+
+/* ------------------------------------------------------------- Top Bar */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 28px;
+  background: rgba(9, 14, 19, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 20;
 }
-.orb svg{position:absolute;inset:0;margin:auto;width:26px;height:26px;fill:var(--chalk)}
-.orb[data-state="listening"]::before{opacity:1;animation:pulse 1.1s ease-in-out infinite}
-.orb[data-state="thinking"]::before{opacity:1;animation:spin 1.1s linear infinite}
-.orb[data-state="speaking"]::before{opacity:1;animation:breathe 2s ease-in-out infinite}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes breathe{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.07);opacity:1}}
 
-/* ------------------------------------------------------------ display */
-.display{gap:16px;overflow:auto;padding-right:2px}
-
-details.planner{background:var(--board-2);border:1px solid var(--line);border-radius:20px;padding:0}
-details.planner>summary{
-  list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
-  padding:14px 18px;font:700 17px/1.2 var(--display);font-stretch:108%;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
-details.planner>summary::-webkit-details-marker{display:none}
-details.planner>summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .2s}
-details.planner[open]>summary::after{transform:rotate(-135deg)}
-.planner-body{padding:0 18px 18px}
-.planner-body p{margin:0 0 14px;color:var(--muted);font-size:14px}
-.fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.field label{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);margin-bottom:5px}
-.field label i{width:9px;height:9px;border-radius:2px;display:block}
-.field input,.field select{
-  width:100%;background:var(--board);border:1px solid var(--line);border-radius:10px;padding:9px 11px;
+
+.alexa-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #00d2ff, #0084ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px var(--alexa-glow);
+  position: relative;
+  flex-shrink: 0;
 }
-.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin-top:10px}
-.checks{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;flex-wrap:wrap}
-.checks label{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
-.primary{
-  border:0;border-radius:12px;background:var(--saffron);color:#2a1c00;font-weight:700;
-  padding:11px 20px;cursor:pointer;
+
+.alexa-badge svg {
+  width: 22px;
+  height: 22px;
+  fill: #fff;
 }
-.primary:hover{filter:brightness(1.06)}
-.primary:disabled{opacity:.5;cursor:default}
-.secondary{
-  border:1px solid var(--line);background:transparent;border-radius:12px;
-  padding:10px 18px;cursor:pointer;font-weight:600;
+
+.brand-text h1 {
+  font: 800 19px/1.1 var(--font-display);
+  letter-spacing: -0.02em;
+  background: linear-gradient(120deg, #ffffff, #ccefff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-.secondary:hover{border-color:var(--saffron)}
-.secondary:disabled{opacity:.5;cursor:default}
 
-.feed{display:flex;flex-direction:column;gap:18px}
-.empty{color:var(--muted);padding:14px 6px;max-width:46ch;font:400 19px/1.5 var(--voice)}
-
-/* generic card shell */
-.card{background:var(--board-2);border:1px solid var(--line);border-radius:20px;padding:18px}
-.card>header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-.card>header h3{
-  margin:0;display:flex;align-items:center;gap:10px;
-  font:800 19px/1.2 var(--display);font-stretch:110%;letter-spacing:-.01em;
+.brand-text p {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
 }
-.card>header h3::before{content:"";width:11px;height:11px;border-radius:3px;background:var(--tool,var(--line))}
-.card[data-tool="plan_meal"]{--tool:var(--saffron)}
-.card[data-tool="manage_inventory"]{--tool:var(--sage)}
-.card[data-tool="shop_for_meal"]{--tool:var(--sky)}
-.card[data-tool="nutrition_status"]{--tool:var(--tomato)}
-.pill{font-size:13px;border-radius:999px;padding:2px 11px;border:1px solid var(--line);color:var(--muted)}
-.pill.ok{color:var(--ok);border-color:var(--ok)}
-.pill.warn{color:var(--saffron);border-color:var(--saffron)}
-.pill.bad{color:var(--bad);border-color:var(--bad)}
-.say{margin:0 0 14px;font:400 18px/1.5 var(--voice);color:var(--chalk);max-width:52ch}
-.note{margin:12px 0 0;padding:10px 14px;border-radius:12px;background:var(--board);font-size:14px;color:var(--muted)}
-.note b{color:var(--chalk);font-weight:600}
-.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
-.answer{display:flex;gap:8px;margin-top:14px}
-.answer input{flex:1;min-width:0;background:var(--board);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
-.card.fresh{animation:land .3s ease-out}
-@keyframes land{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
 
-/* ------------------------------------------------------------ the nutrition label */
-.label{
-  position:relative;background:var(--paper);color:var(--ink);border-radius:6px;
-  padding:18px 20px 14px;box-shadow:0 22px 44px -22px rgba(0,0,0,.7);
+.mcp-pill {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 1px 7px;
+  background: rgba(0, 210, 255, 0.12);
+  color: var(--alexa-cyan);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
-.label h3{margin:0;font:900 34px/.95 var(--display);font-stretch:88%;letter-spacing:-.03em;padding-right:130px}
-.meal-name{margin:6px 0 10px;font:500 16px/1.3 var(--body);color:var(--ink-soft);padding-right:130px}
-.rule{display:block;background:var(--ink);border:0;margin:0}
-.rule.t8{height:8px}.rule.t4{height:4px}.rule.t1{height:1px;opacity:.55}
-.label .cal{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:6px 0 4px}
-.cal-name{font:800 22px/1 var(--display);font-stretch:96%}
-.cal-goal{font-size:13px;color:var(--ink-soft)}
-.cal-val{font:900 52px/1 var(--display);font-stretch:92%;letter-spacing:-.03em}
-.mrow{
-  display:grid;grid-template-columns:minmax(0,1fr) auto auto 22px;align-items:center;gap:12px;
-  padding:7px 0;border-top:1px solid rgba(23,35,29,.55);
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
-.mrow:first-of-type{border-top:0}
-.mname{display:flex;align-items:center;gap:9px;font-weight:700}
-.mname i{width:11px;height:11px;border-radius:2px;display:block;flex:none}
-.mval{font:800 20px/1 var(--display);font-stretch:96%}
-.mgoal{font-size:13px;color:var(--ink-soft);min-width:84px;text-align:right}
-.tick{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800}
-.tick svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
-.tick.ok{background:var(--f-ink)}
-.tick.off{background:transparent;border:2px solid var(--ink-soft);color:var(--ink-soft)}
-.split{display:flex;height:9px;border-radius:2px;overflow:hidden;margin:10px 0 4px;background:rgba(23,35,29,.12)}
-.split i{display:block;height:100%;transform-origin:left;}
-.fresh .split i{animation:grow .7s .25s cubic-bezier(.2,.8,.2,1) both}
-@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-.split-cap{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);margin-bottom:8px}
-.l-sec{margin-top:10px}
-.l-sec h4{margin:8px 0 4px;font:800 15px/1.2 var(--display);font-stretch:104%}
-.ing{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;padding:6px 0;border-top:1px solid rgba(23,35,29,.25);font-size:15px}
-.ing:first-of-type{border-top:0}
-.ing .g{font-weight:700}
-.ing .k{color:var(--ink-soft);min-width:64px;text-align:right}
-.src{margin:8px 0 0;font-size:12px;color:var(--ink-soft)}
-.diag{margin:6px 0 0;padding:0;list-style:none;font-size:14px}
-.diag li{padding:3px 0 3px 18px;position:relative}
-.diag li::before{content:"";position:absolute;left:3px;top:11px;width:7px;height:7px;border-radius:50%;background:var(--p-ink)}
 
-.stamp{
-  position:absolute;top:16px;right:16px;padding:3px 12px 4px;border:3px solid var(--f-ink);color:var(--f-ink);
-  border-radius:8px;font:900 21px/1.1 var(--display);font-stretch:96%;letter-spacing:-.01em;
-  transform:rotate(-7deg);background:rgba(248,247,242,.92);text-align:center;
+.tool-lamps {
+  display: flex;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
 }
-.stamp.warn{border-color:var(--c-ink);color:var(--c-ink)}
-.stamp.bad{border-color:var(--p-ink);color:var(--p-ink)}
-.fresh .stamp{animation:slam .4s .15s cubic-bezier(.2,1.4,.4,1) both}
-@keyframes slam{from{transform:rotate(-18deg) scale(2.3);opacity:0}60%{opacity:1}to{transform:rotate(-7deg) scale(1);opacity:1}}
 
-.below{margin-top:14px;display:flex;flex-direction:column;gap:12px}
-.recipe{background:var(--board);border-radius:14px;padding:14px 16px}
-.recipe h4,.trail h4{margin:0 0 8px;font:800 16px/1.2 var(--display);font-stretch:106%}
-.recipe .times{margin:0 0 8px;color:var(--muted);font-size:14px}
-.recipe ol{margin:0;padding-left:22px;font:400 18px/1.5 var(--voice);max-width:56ch}
-.recipe li+li{margin-top:6px}
-.recipe .tip{margin:10px 0 0;color:var(--muted);font:italic 400 17px/1.45 var(--voice)}
-details.trail{background:var(--board);border-radius:14px;padding:0}
-details.trail>summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:15px;list-style:none;display:flex;justify-content:space-between;align-items:center}
-details.trail>summary::-webkit-details-marker{display:none}
-details.trail>summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .2s}
-details.trail[open]>summary::after{transform:rotate(-135deg)}
-.steps{margin:0;padding:0 16px 14px;list-style:none;display:flex;flex-direction:column;gap:2px}
-.steps li{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:15px}
-.steps .gl{width:20px;height:20px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid var(--line)}
-.steps .gl.done{background:var(--ok);border-color:var(--ok)}
-.steps .gl.done svg{width:12px;height:12px;fill:none;stroke:#0f2417;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.steps .gl.bad{border-color:var(--bad)}
-.steps .who{color:var(--muted);font-size:13px;margin-left:auto}
-
-/* ------------------------------------------------------------ pantry */
-.pantry{display:flex;flex-direction:column;gap:8px}
-.prow{
-  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;
-  background:var(--board);border-radius:12px;padding:10px 14px;
+.lamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  background: transparent;
+  transition: all 0.25s ease;
+  font-family: var(--font-mono);
 }
-.pname{font-weight:600;overflow-wrap:anywhere}
-.pmeta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
-.tag{font-size:12.5px;border-radius:999px;padding:1px 9px;border:1px solid var(--line);color:var(--muted)}
-.tag.warn{color:var(--saffron);border-color:var(--saffron)}
-.tag.bad{color:var(--bad);border-color:var(--bad)}
-.pgrams{text-align:right;font:800 22px/1 var(--display);font-stretch:100%}
-.pgrams small{display:block;margin-top:4px;font:450 12.5px/1 var(--body);color:var(--muted)}
-.ask{background:var(--board);border-radius:14px;padding:14px 16px;border:1px solid var(--saffron)}
-.ask p{margin:0;font:400 19px/1.45 var(--voice)}
 
-/* ------------------------------------------------------------ cart */
-.lines{display:flex;flex-direction:column;gap:8px}
-.line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--board);border-radius:12px;padding:10px 14px}
-.line .lname{font-weight:600}
-.line .lsub{font-size:13px;color:var(--muted)}
-.line .lprice{font:800 18px/1 var(--display)}
-.total{display:flex;justify-content:space-between;align-items:baseline;padding:12px 14px 0;font-weight:600}
-.total b{font:900 26px/1 var(--display)}
-.guard{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:10px 14px;border-radius:12px;background:rgba(124,196,255,.1);border:1px solid rgba(124,196,255,.4);font-size:14px}
-
-/* ------------------------------------------------------------ today */
-.rings{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.ringbox{background:var(--board);border-radius:14px;padding:12px 6px 10px;text-align:center}
-.ringbox svg{width:86px;height:86px;display:block;margin:0 auto}
-.ringbox .rl{margin-top:4px;font-size:13px;color:var(--muted)}
-.ringbox .rg{font-size:12.5px;color:var(--muted)}
-.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-.tile{background:var(--board);border-radius:12px;padding:10px 12px}
-.tile b{display:block;font:800 24px/1.1 var(--display)}
-.tile span{font-size:13px;color:var(--muted)}
-.tile.kcal b{color:var(--chalk)}.tile.protein b{color:var(--tomato)}
-.tile.carbs b{color:var(--saffron)}.tile.fat b{color:var(--sage)}
-.mcap{font-size:13px;color:var(--muted);margin:12px 0 6px}
-.mcap:first-child{margin-top:0}
-
-/* generic */
-.kv{display:grid;grid-template-columns:minmax(90px,max-content) 1fr;gap:4px 14px;font-size:15px}
-.kv dt{color:var(--muted)}.kv dd{margin:0;overflow-wrap:anywhere}
-.sec{margin-top:10px}.sec>h4{margin:0 0 6px;font:700 15px/1.2 var(--display);color:var(--muted)}
-.items{display:flex;flex-direction:column;gap:8px}
-.item{background:var(--board);border-radius:10px;padding:8px 12px}
-.tags{display:flex;flex-wrap:wrap;gap:6px}
-.tags span{background:var(--board);border-radius:999px;padding:2px 10px;font-size:14px}
-details.raw{margin-top:14px;font-size:14px;color:var(--muted)}
-details.raw summary{cursor:pointer}
-details.raw pre{margin:8px 0 0;max-height:240px;overflow:auto;background:var(--board);border-radius:10px;padding:10px;font-size:12.5px}
-
-@media (max-width:980px){
-  .app{height:auto;min-height:100dvh}
-  .main{grid-template-columns:1fr;padding:4px 14px 20px}
-  .top{padding:14px}
-  .talk{height:74dvh}
-  .lamps{display:none}
-  .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .row2{grid-template-columns:1fr}
-  .rings,.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .label h3,.meal-name{padding-right:0}
-  .stamp{position:static;display:inline-block;margin-bottom:10px;transform:rotate(-4deg)}
+.lamp::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition: all 0.25s;
 }
-@media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation:none!important;transition:none!important}
+
+.lamp.active {
+  color: #fff;
+  background: rgba(0, 210, 255, 0.15);
+  box-shadow: 0 0 12px var(--alexa-glow);
+}
+
+.lamp.active::before {
+  background: var(--alexa-cyan);
+  box-shadow: 0 0 8px var(--alexa-cyan);
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: pulse-dot 2s infinite;
+}
+
+.status-badge[data-ok="true"] .status-dot {
+  background: var(--emerald);
+  box-shadow: 0 0 8px var(--emerald);
+}
+
+.status-badge[data-ok="false"] .status-dot {
+  background: var(--coral);
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.btn-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-header:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.btn-header.voice-active {
+  border-color: rgba(0, 210, 255, 0.4);
+  background: rgba(0, 210, 255, 0.1);
+  color: var(--alexa-cyan);
+}
+
+/* ------------------------------------------------------------- Main Workspace */
+.main-workspace {
+  display: grid;
+  grid-template-columns: minmax(380px, 4.8fr) minmax(0, 7.2fr);
+  gap: 20px;
+  padding: 16px 28px 20px;
+  min-height: 0;
+}
+
+/* ------------------------------------------------------------- Conversation Side (Talk) */
+.talk-pane {
+  background: var(--bg-card);
+  backdrop-filter: blur(28px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.5);
+}
+
+.chat-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.chat-header-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 700 13.5px/1 var(--font-display);
+  letter-spacing: 0.01em;
+  color: var(--text-main);
+}
+
+.chat-header-title span.pulse-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 6px var(--emerald);
+}
+
+.voice-badge-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--alexa-cyan);
+  background: rgba(0, 210, 255, 0.08);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+
+.welcome-hero {
+  margin: auto 0 10px;
+  padding: 24px 20px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.03), rgba(0, 210, 255, 0.03));
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.welcome-hero h2 {
+  font: 800 clamp(24px, 2.5vw, 32px)/1.15 var(--font-display);
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, #ffffff, #a5e8ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.welcome-hero p {
+  color: var(--text-muted);
+  font-size: 14.5px;
+  line-height: 1.6;
+  max-width: 48ch;
+}
+
+.voice-intro-callout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: rgba(0, 210, 255, 0.06);
+  border: 1px solid rgba(0, 210, 255, 0.18);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #cceeff;
+}
+
+/* Chat Messages */
+.msg {
+  position: relative;
+  max-width: 86%;
+  animation: fade-up 0.25s ease-out forwards;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.msg.user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.18), rgba(0, 132, 255, 0.28));
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  border-radius: 18px 18px 4px 18px;
+  padding: 11px 17px;
+  font-size: 14.5px;
+  color: #fff;
+  box-shadow: 0 4px 18px -4px rgba(0, 132, 255, 0.25);
+}
+
+.msg.bot {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px 18px 18px 4px;
+  padding: 13px 18px;
+  font-size: 14.5px;
+  color: var(--text-main);
+  line-height: 1.6;
+}
+
+.msg.bot .speaker-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  color: var(--alexa-cyan);
+  vertical-align: middle;
+}
+
+.msg.err {
+  align-self: flex-start;
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  font-size: 13.5px;
+  color: #fecdd3;
+}
+
+/* Agent Task Chips */
+.activity-box {
+  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.agent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.agent-chip .pulse-orb {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--alexa-cyan);
+}
+
+.agent-chip.running .pulse-orb {
+  animation: ping 1s infinite;
+  background: var(--amber);
+}
+
+.agent-chip.done .pulse-orb { background: var(--emerald); }
+.agent-chip.failed .pulse-orb { background: var(--coral); }
+
+@keyframes ping {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.6); opacity: 0.3; }
+}
+
+.thinking-pill {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(0, 210, 255, 0.05);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  border-radius: var(--radius-full);
+  color: var(--alexa-cyan);
+  font-size: 13px;
+}
+
+.wave-bars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 14px;
+}
+
+.wave-bars span {
+  width: 3px;
+  height: 100%;
+  background: var(--alexa-cyan);
+  border-radius: 2px;
+  animation: wave 1s ease-in-out infinite;
+}
+
+.wave-bars span:nth-child(2) { animation-delay: 0.2s; }
+.wave-bars span:nth-child(3) { animation-delay: 0.4s; }
+.wave-bars span:nth-child(4) { animation-delay: 0.6s; }
+
+@keyframes wave {
+  0%, 100% { height: 4px; }
+  50% { height: 14px; }
+}
+
+/* Quick Prompts Carousel */
+.quick-prompts {
+  display: flex;
+  gap: 8px;
+  padding: 8px 20px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.quick-prompts::-webkit-scrollbar { display: none; }
+
+.prompt-pill {
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.prompt-pill:hover {
+  background: rgba(0, 210, 255, 0.1);
+  color: #fff;
+  border-color: rgba(0, 210, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Voice & Text Composer */
+.composer-dock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--border-subtle);
+  position: relative;
+}
+
+/* Alexa Pulsing Orb */
+.orb-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.orb-button {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 0;
+  background: #0f1822;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.orb-button:hover {
+  transform: scale(1.05);
+}
+
+.orb-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--alexa-cyan), var(--alexa-blue), #8b5cf6, var(--alexa-cyan));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+.orb-button svg {
+  width: 24px;
+  height: 24px;
+  fill: var(--text-main);
+  z-index: 2;
+  transition: fill 0.2s;
+}
+
+/* Orb States */
+.orb-button[data-state="listening"] .orb-ring {
+  opacity: 1;
+  animation: orb-pulse 1.2s ease-in-out infinite;
+}
+
+.orb-button[data-state="listening"] svg {
+  fill: var(--coral);
+}
+
+.orb-button[data-state="thinking"] .orb-ring {
+  opacity: 1;
+  animation: orb-spin 1s linear infinite;
+}
+
+.orb-button[data-state="speaking"] .orb-ring {
+  opacity: 1;
+  animation: orb-breathe 1.8s ease-in-out infinite;
+}
+
+.orb-button[data-state="speaking"] svg {
+  fill: var(--alexa-cyan);
+}
+
+@keyframes orb-pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px var(--alexa-cyan)); }
+  50% { transform: scale(1.15); filter: drop-shadow(0 0 20px var(--coral)); }
+}
+
+@keyframes orb-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px var(--alexa-cyan)); }
+  50% { transform: scale(1.1); filter: drop-shadow(0 0 22px var(--emerald)); }
+}
+
+.composer-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 14px 22px;
+  font-size: 14.5px;
+  color: #fff;
+  transition: all 0.2s;
+}
+
+.composer-input:focus {
+  outline: none;
+  border-color: var(--alexa-cyan);
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.15);
+}
+
+.composer-input::placeholder { color: var(--text-faint); }
+
+.btn-send {
+  background: linear-gradient(135deg, var(--alexa-cyan), var(--alexa-blue));
+  border: 0;
+  border-radius: var(--radius-full);
+  padding: 13px 22px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow: 0 4px 14px var(--alexa-glow);
+  transition: all 0.2s;
+}
+
+.btn-send:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.btn-send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ------------------------------------------------------------- Display Side (Feed) */
+.display-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+/* Target Config Box */
+.planner-accordion {
+  background: var(--bg-card);
+  backdrop-filter: blur(28px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.25s;
+}
+
+.planner-accordion[open] {
+  border-color: rgba(0, 210, 255, 0.3);
+}
+
+.planner-accordion > summary {
+  padding: 16px 22px;
+  font: 700 15px/1.2 var(--font-display);
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.planner-accordion > summary::-webkit-details-marker { display: none; }
+
+.planner-accordion > summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform 0.25s;
+}
+
+.planner-accordion[open] > summary::after {
+  transform: rotate(-135deg);
+}
+
+.planner-content {
+  padding: 4px 22px 20px;
+}
+
+/* Macro Preset Buttons */
+.macro-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.preset-chip {
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-chip:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.macro-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.macro-card-input {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  transition: border-color 0.2s;
+}
+
+.macro-card-input:focus-within {
+  border-color: var(--alexa-cyan);
+}
+
+.macro-card-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.macro-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.macro-card-input input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.macro-card-input input:focus { outline: none; }
+.macro-card-input input::placeholder { color: var(--text-faint); font-weight: 400; }
+
+.planner-row2 {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.form-select, .form-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13.5px;
+  color: #fff;
+}
+
+.form-select:focus, .form-input:focus {
+  outline: none;
+  border-color: var(--alexa-cyan);
+}
+
+.planner-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.btn-primary-action {
+  background: linear-gradient(135deg, var(--alexa-cyan), var(--alexa-blue));
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 11px 24px;
+  font: 700 14px var(--font-display);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 18px var(--alexa-glow);
+  transition: all 0.2s;
+}
+
+.btn-primary-action:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.btn-primary-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Feed Cards */
+.cards-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.feed-empty-state {
+  padding: 44px 28px;
+  text-align: center;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+}
+
+.feed-empty-state svg {
+  width: 48px;
+  height: 48px;
+  fill: var(--text-faint);
+  margin-bottom: 12px;
+}
+
+/* Generic Card Shell */
+.app-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(28px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  box-shadow: 0 16px 40px -15px rgba(0, 0, 0, 0.5);
+  animation: card-appear 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes card-appear {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 800 18px/1.2 var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.tool-indicator-badge {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--alexa-cyan);
+}
+
+.card-status-pill {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.card-status-pill.ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--emerald);
+  border-color: var(--border-emerald);
+}
+
+.card-status-pill.warn {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--amber);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.card-status-pill.bad {
+  background: rgba(244, 63, 94, 0.12);
+  color: var(--coral);
+  border-color: rgba(244, 63, 94, 0.35);
+}
+
+.card-spoken-summary {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ------------------------------------------------------------- Nutrition Facts Card Component */
+.nutrition-facts-sheet {
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 12px;
+  padding: 22px 24px;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.65);
+  position: relative;
+  overflow: hidden;
+}
+
+.sheet-header {
+  position: relative;
+  padding-bottom: 12px;
+}
+
+.sheet-title {
+  font: 900 36px/0.95 var(--font-display);
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.sheet-meal-name {
+  font: 600 17px/1.3 var(--font-body);
+  color: #475569;
+  margin-top: 6px;
+  max-width: 80%;
+}
+
+.verified-stamp {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 6px 14px;
+  border: 3px solid var(--emerald);
+  color: var(--emerald);
+  border-radius: 8px;
+  font: 900 17px/1 var(--font-display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transform: rotate(-5deg);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.verified-stamp.warn {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.verified-stamp.bad {
+  border-color: var(--coral);
+  color: var(--coral);
+}
+
+.heavy-bar {
+  height: 9px;
+  background: #0f172a;
+  margin: 10px 0;
+}
+
+.medium-bar {
+  height: 5px;
+  background: #0f172a;
+  margin: 8px 0;
+}
+
+.hairline {
+  height: 1px;
+  background: #cbd5e1;
+  margin: 6px 0;
+}
+
+.cal-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.cal-label {
+  font: 800 24px/1 var(--font-display);
+}
+
+.cal-number {
+  font: 900 56px/1 var(--font-mono);
+  letter-spacing: -0.04em;
+}
+
+.macro-breakdown-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto 24px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid #e2e8f0;
+  font-size: 14.5px;
+}
+
+.macro-name {
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.macro-name-tag {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.macro-amount {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.macro-target-note {
+  font-size: 12.5px;
+  color: #64748b;
+  text-align: right;
+  min-width: 90px;
+}
+
+/* Caloric split multi-progress */
+.caloric-ratio-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 14px 0 6px;
+  background: #e2e8f0;
+}
+
+.caloric-ratio-bar span {
+  height: 100%;
+  transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ratio-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+/* Ingredients Section */
+.sheet-ingredients {
+  margin-top: 14px;
+}
+
+.sheet-subtitle {
+  font: 800 15px var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+}
+
+.ing-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid #f1f5f9;
+  font-size: 14px;
+}
+
+.ing-row span.qty {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.ing-row span.cals {
+  font-family: var(--font-mono);
+  color: #64748b;
+  min-width: 60px;
+  text-align: right;
+}
+
+/* Recipe & Steps Deck */
+.recipe-deck {
+  margin-top: 16px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.recipe-deck h4 {
+  font: 700 15px var(--font-display);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recipe-times {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.recipe-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recipe-step-item {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 210, 255, 0.15);
+  color: var(--alexa-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Card Actions */
+.card-actions-bar {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.btn-card-action {
+  padding: 9px 18px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.btn-card-action.primary {
+  background: linear-gradient(135deg, var(--alexa-cyan), var(--alexa-blue));
+  border: 0;
+  box-shadow: 0 4px 14px var(--alexa-glow);
+}
+
+.btn-card-action:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+/* ------------------------------------------------------------- Pantry & Cart Components */
+.pantry-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pantry-item-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+}
+
+.pantry-item-name {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.pantry-meta-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.tag-badge {
+  font-size: 11.5px;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.tag-badge.fresh { color: var(--emerald); border-color: var(--border-emerald); }
+.tag-badge.warn { color: var(--amber); border-color: rgba(245, 158, 11, 0.35); }
+.tag-badge.bad { color: var(--coral); border-color: rgba(244, 63, 94, 0.35); }
+
+.pantry-item-weight {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 800;
+  text-align: right;
+}
+
+/* Cart Checkout Styling */
+.cart-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cart-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+}
+
+.cart-total-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 14px 4px 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.cart-total-price {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--emerald);
+}
+
+.safety-guard-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  border-radius: var(--radius-md);
+  margin-top: 14px;
+  font-size: 13.5px;
+  color: #bce9ff;
+}
+
+/* Macro Rings / Today Dashboard */
+.macro-rings-dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.ring-pod {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px 10px;
+  text-align: center;
+}
+
+.ring-pod svg {
+  width: 90px;
+  height: 90px;
+  display: block;
+  margin: 0 auto;
+}
+
+.ring-pod .ring-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.ring-pod .ring-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Voice Profile Dialog */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.voice-modal {
+  background: #111a24;
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 26px;
+  width: 92%;
+  max-width: 480px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 35px var(--alexa-glow);
+  transform: translateY(12px);
+  transition: transform 0.25s ease;
+}
+
+.modal-overlay.open .voice-modal {
+  transform: translateY(0);
+}
+
+.voice-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.voice-modal-header h3 {
+  font: 800 18px var(--font-display);
+}
+
+.voice-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.voice-option-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.voice-option-card:hover, .voice-option-card.selected {
+  background: rgba(0, 210, 255, 0.12);
+  border-color: var(--alexa-cyan);
+}
+
+.voice-option-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.voice-option-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------- Responsive */
+@media (max-width: 1080px) {
+  .app { height: auto; min-height: 100dvh; }
+  .main-workspace { grid-template-columns: 1fr; padding: 14px; }
+  .talk-pane { height: 75dvh; }
+  .tool-lamps { display: none; }
+  .macro-grid { grid-template-columns: repeat(2, 1fr); }
+  .macro-rings-dashboard { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
 </head>
 <body>
+
 <div class="app">
-  <header class="top">
+  <!-- Top Navigation Header -->
+  <header class="top-bar">
     <div class="brand">
-      <h1>Meal &amp; Macro Planner</h1>
-      <p>Alexa+ simulation. Every number is checked against USDA data.</p>
+      <div class="alexa-badge">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div class="brand-text">
+        <h1>Alexa+ Culinary OS</h1>
+        <p>Agentic Meal &amp; Macro Intelligence <span class="mcp-pill">Streamable HTTP MCP</span></p>
+      </div>
     </div>
-    <div class="top-right">
-      <div class="lamps" id="lamps" aria-label="MCP tools"></div>
-      <div class="status" id="status" data-ok="unknown"><span class="dot"></span><span id="statusText">Checking server…</span></div>
-      <button class="ghost" id="muteBtn" type="button" aria-pressed="false">Voice replies on</button>
+
+    <div class="top-actions">
+      <!-- Active Tool Lamps -->
+      <div class="tool-lamps" id="lamps" aria-label="MCP Tools">
+        <span class="lamp" data-lamp="plan_meal">plan_meal</span>
+        <span class="lamp" data-lamp="manage_inventory">manage_inventory</span>
+        <span class="lamp" data-lamp="shop_for_meal">shop_for_meal</span>
+        <span class="lamp" data-lamp="nutrition_status">nutrition_status</span>
+      </div>
+
+      <!-- Server Connection Dot -->
+      <div class="status-badge" id="status" data-ok="unknown">
+        <span class="status-dot"></span>
+        <span id="statusText">Connecting MCP…</span>
+      </div>
+
+      <!-- Voice Selector Pill -->
+      <button class="btn-header voice-active" id="voiceProfileBtn" type="button" aria-haspopup="dialog" title="Configure Agent Voice">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+        <span id="currentVoiceLabel">Soft Male (Daniel)</span>
+      </button>
+
+      <!-- Voice Toggle Mute -->
+      <button class="btn-header" id="muteBtn" type="button" aria-pressed="false" title="Toggle Spoken Responses">
+        <span id="muteLabel">Voice: ON</span>
+      </button>
+
+      <!-- Reset Session -->
+      <button class="btn-header" id="newSessionBtn" type="button" title="Start New Conversation">
+        New Session
+      </button>
     </div>
   </header>
 
-  <main class="main">
-    <section class="talk" aria-label="Conversation">
-      <div class="messages" id="messages" aria-live="polite">
-        <div class="greeting" id="greeting">
-          <h2>What are we eating?</h2>
-          <p>Give me a calorie or macro target and I'll build a meal from your pantry, then check every number before I call it verified.</p>
+  <!-- Main Workspace -->
+  <main class="main-workspace">
+    <!-- Left: Conversational Voice Assistant -->
+    <section class="talk-pane" aria-label="Conversation Feed">
+      <div class="chat-header">
+        <div class="chat-header-title">
+          <span class="pulse-indicator"></span>
+          <span>Alexa+ Live Dialog</span>
+        </div>
+        <div class="voice-badge-indicator" id="voiceStatusBadge">
+          <span>🎙️ Soft Voice Active</span>
         </div>
       </div>
-      <div class="suggest" id="suggest"></div>
-      <form class="composer" id="composer" autocomplete="off">
-        <button class="orb" id="orb" type="button" data-state="idle" aria-label="Talk to the assistant">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>
+
+      <div class="messages" id="messages" aria-live="polite">
+        <div class="welcome-hero" id="greeting">
+          <h2>What would you like to cook?</h2>
+          <p>Tell me your calorie and macro targets. I'll search your kitchen inventory, construct an exact meal with mathematical LP portioning, and verify every number against trusted USDA data.</p>
+          <div class="voice-intro-callout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zm5 9a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+            <span><strong>Voice Output:</strong> Configured with a natural, calm, soft male voice. Tap the ring below or type your request.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Suggestion Pills -->
+      <div class="quick-prompts" id="suggest"></div>
+
+      <!-- Voice & Text Composer Dock -->
+      <form class="composer-dock" id="composer" autocomplete="off">
+        <div class="orb-container">
+          <button class="orb-button" id="orb" type="button" data-state="idle" aria-label="Tap to talk to Alexa+" title="Tap to speak">
+            <div class="orb-ring"></div>
+            <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>
+          </button>
+        </div>
+        <input class="composer-input" id="text" type="text" placeholder="Tap the ring and speak, or type a request..." aria-label="Message input">
+        <button class="btn-send" id="sendBtn" type="submit">
+          <span>Send</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
-        <input id="text" type="text" placeholder="Tap the ring and talk, or type here" aria-label="Message">
-        <button class="send" id="sendBtn" type="submit">Send</button>
       </form>
     </section>
 
-    <section class="display" aria-label="Display">
-      <details class="planner" id="plannerBox" open>
-        <summary>Set targets by hand</summary>
-        <form class="planner-body" id="planner">
-          <p>Fill in only what you care about. Leave the rest empty.</p>
-          <div class="fields">
-            <div class="field"><label for="f-kcal"><i style="background:var(--chalk)"></i>Calories</label><input id="f-kcal" type="number" min="0" step="10" placeholder="650"></div>
-            <div class="field"><label for="f-protein"><i style="background:var(--tomato)"></i>Protein (g)</label><input id="f-protein" type="number" min="0" step="1" placeholder="60"></div>
-            <div class="field"><label for="f-carbs"><i style="background:var(--saffron)"></i>Carbs (g)</label><input id="f-carbs" type="number" min="0" step="1" placeholder="70"></div>
-            <div class="field"><label for="f-fat"><i style="background:var(--sage)"></i>Fat (g)</label><input id="f-fat" type="number" min="0" step="1" placeholder="20"></div>
+    <!-- Right: Smart Display & MCP Apps Surface -->
+    <section class="display-pane" aria-label="Smart Display Surface">
+      <!-- Target Configurator -->
+      <details class="planner-accordion" id="plannerBox" open>
+        <summary>
+          <span>🎯 Nutrition Target &amp; Macro Goals</span>
+        </summary>
+        <div class="planner-content">
+          <!-- Quick Macro Presets -->
+          <div class="macro-presets">
+            <span class="preset-chip" onclick="applyPreset(650, 55, 60, 20, 'High-Protein Cut')">⚡ High Protein (650 kcal · 55g P)</span>
+            <span class="preset-chip" onclick="applyPreset(500, 35, 10, 35, 'Keto Power')">🥑 Keto (500 kcal · 10g C)</span>
+            <span class="preset-chip" onclick="applyPreset(800, 60, 95, 20, 'Clean Bulk')">💪 Clean Bulk (800 kcal · 60g P)</span>
+            <span class="preset-chip" onclick="applyPreset(550, 35, 65, 15, 'Balanced Light')">🥗 Balanced (550 kcal)</span>
           </div>
-          <div class="row2">
-            <div class="field"><label for="f-type">Meal</label>
-              <select id="f-type"><option value="">Any</option><option>breakfast</option><option>lunch</option><option>dinner</option><option>snack</option></select>
+
+          <form id="planner">
+            <div class="macro-grid">
+              <div class="macro-card-input">
+                <div class="macro-card-label">
+                  <span>Calories</span>
+                  <span class="macro-dot" style="background:var(--alexa-cyan)"></span>
+                </div>
+                <input id="f-kcal" type="number" min="0" step="10" placeholder="600">
+              </div>
+
+              <div class="macro-card-input">
+                <div class="macro-card-label">
+                  <span>Protein (g)</span>
+                  <span class="macro-dot" style="background:var(--p-color)"></span>
+                </div>
+                <input id="f-protein" type="number" min="0" step="1" placeholder="45">
+              </div>
+
+              <div class="macro-card-input">
+                <div class="macro-card-label">
+                  <span>Carbs (g)</span>
+                  <span class="macro-dot" style="background:var(--c-color)"></span>
+                </div>
+                <input id="f-carbs" type="number" min="0" step="1" placeholder="50">
+              </div>
+
+              <div class="macro-card-input">
+                <div class="macro-card-label">
+                  <span>Fat (g)</span>
+                  <span class="macro-dot" style="background:var(--f-color)"></span>
+                </div>
+                <input id="f-fat" type="number" min="0" step="1" placeholder="18">
+              </div>
             </div>
-            <div class="field"><label for="f-req">Anything else?</label><input id="f-req" type="text" placeholder="For example: no dairy, quick to cook"></div>
-          </div>
-          <div class="checks">
-            <label><input type="checkbox" id="f-inv" checked> Use what's in my pantry</label>
-            <button class="primary" id="planBtn" type="submit">Plan meal</button>
-          </div>
-        </form>
+
+            <div class="planner-row2">
+              <select class="form-select" id="f-type">
+                <option value="">Any Meal</option>
+                <option value="breakfast">🌅 Breakfast</option>
+                <option value="lunch">☀️ Lunch</option>
+                <option value="dinner">🌙 Dinner</option>
+                <option value="snack">🍎 Snack</option>
+              </select>
+              <input class="form-input" id="f-req" type="text" placeholder="Special preferences (e.g. no dairy, Mediterranean, high fiber)...">
+            </div>
+
+            <div class="planner-footer">
+              <label class="checkbox-label">
+                <input type="checkbox" id="f-inv" checked>
+                <span>Prioritize kitchen pantry items</span>
+              </label>
+              <button class="btn-primary-action" id="planBtn" type="submit">
+                Build &amp; Verify Meal
+              </button>
+            </div>
+          </form>
+        </div>
       </details>
 
-      <div class="feed" id="feed">
-        <p class="empty" id="empty">Your meal labels, pantry, shopping carts and daily totals will appear here as you talk.</p>
+      <!-- Active Cards Feed -->
+      <div class="cards-feed" id="feed">
+        <div class="feed-empty-state" id="empty">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h10v2H7zm0-3h10v2H7zm0 6h7v2H7z"/></svg>
+          <p><strong>Smart Display Canvas Ready</strong></p>
+          <p style="font-size:13px;margin-top:4px;">Verified meal plans, nutrition fact labels, pantry status, and checkout carts will render here automatically.</p>
+        </div>
       </div>
     </section>
   </main>
 </div>
 
+<!-- Voice Selector Modal -->
+<div class="modal-overlay" id="voiceModal" role="dialog" aria-modal="true" aria-labelledby="voiceModalTitle">
+  <div class="voice-modal">
+    <div class="voice-modal-header">
+      <h3 id="voiceModalTitle">Assistant Voice Settings</h3>
+      <button class="btn-header" id="closeVoiceModal" type="button" style="padding:4px 10px;">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);">
+      Alexa+ agent voice configured to a calm, soft male persona for a pleasant hands-free kitchen experience.
+    </p>
+
+    <div class="voice-options-list" id="voiceList">
+      <div class="voice-option-card selected" data-voice="daniel">
+        <div>
+          <div class="voice-option-title">Daniel (Soft Male)</div>
+          <div class="voice-option-desc">Calm, clear, and soothing male voice (Recommended)</div>
+        </div>
+        <button class="btn-header" type="button" onclick="previewVoiceText('daniel')">Preview</button>
+      </div>
+
+      <div class="voice-option-card" data-voice="austin">
+        <div>
+          <div class="voice-option-title">Austin (Warm Male)</div>
+          <div class="voice-option-desc">Natural and warm male conversational tone</div>
+        </div>
+        <button class="btn-header" type="button" onclick="previewVoiceText('austin')">Preview</button>
+      </div>
+
+      <div class="voice-option-card" data-voice="troy">
+        <div>
+          <div class="voice-option-title">Troy (Deep Male)</div>
+          <div class="voice-option-desc">Confident, resonant male voice</div>
+        </div>
+        <button class="btn-header" type="button" onclick="previewVoiceText('troy')">Preview</button>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+      <button class="btn-primary-action" type="button" id="saveVoiceBtn" style="padding:9px 20px;">Done</button>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 
-/* ------------------------------------------------------------------ helpers */
 const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
 function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(props || {})) {
     if (k === "class") el.className = v;
     else if (k === "text") el.textContent = v;
-    else if (k === "html") el.innerHTML = v; /* static, trusted strings only */
+    else if (k === "html") el.innerHTML = v;
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
     else if (v !== false && v != null) el.setAttribute(k, v === true ? "" : v);
   }
@@ -461,53 +1689,35 @@ function h(tag, props = {}, ...kids) {
   return el;
 }
 
-const pretty = (k) => String(k).replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
-const num = (v) => (Number.isInteger(v) ? v : Math.round(v * 10) / 10);
-const isObj = (o) => o && typeof o === "object" && !Array.isArray(o);
+const pretty = (s = "") => String(s).replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const num = (n) => (typeof n === "number" ? (Number.isInteger(n) ? String(n) : n.toFixed(1)) : String(n ?? ""));
+const isObj = (x) => Boolean(x) && typeof x === "object" && !Array.isArray(x);
 
-function findKey(o, key, d = 0) {
-  if (o == null || typeof o !== "object" || d > 6) return undefined;
-  if (!Array.isArray(o) && o[key] != null) return o[key];
-  for (const v of Object.values(o)) {
-    const r = findKey(v, key, d + 1);
+function findKey(obj, needle) {
+  if (!obj || typeof obj !== "object") return undefined;
+  if (needle in obj) return obj[needle];
+  for (const v of Object.values(obj)) {
+    const r = findKey(v, needle);
     if (r !== undefined) return r;
   }
   return undefined;
 }
 
-const CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg>';
+const CHECK_SVG = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
 
-/* ------------------------------------------------------------------ constants */
-const TITLES = {
-  plan_meal: "Meal plan",
-  manage_inventory: "Pantry",
-  shop_for_meal: "Shopping cart",
-  nutrition_status: "Nutrition today",
-};
-const WORKING = {
-  plan_meal: "Planning the meal",
-  manage_inventory: "Checking the pantry",
-  shop_for_meal: "Preparing the cart",
-  nutrition_status: "Checking nutrition",
-};
 const SUGGESTIONS = [
-  "I bought 500 grams of chicken breast, 1 kilogram of rice and 6 eggs",
-  "Plan dinner with 650 calories and at least 60 grams of protein",
-  "What's in my pantry?",
-  "How many macros do I have left today?",
+  "🥗 600 kcal & 45g protein dinner",
+  "🥑 Keto lunch under 15g carbs",
+  "📦 What's expiring in my pantry?",
+  "🛒 Show my grocery cart & order",
+  "📊 Today's macro budget status",
 ];
-const MACROS = [
-  { k: "kcal", label: "Calories", unit: "", ink: "var(--ink)", tile: "var(--chalk)" },
-  { k: "protein_g", label: "Protein", unit: "g", ink: "var(--p-ink)", tile: "var(--tomato)" },
-  { k: "carbs_g", label: "Carbs", unit: "g", ink: "var(--c-ink)", tile: "var(--saffron)" },
-  { k: "fat_g", label: "Fat", unit: "g", ink: "var(--f-ink)", tile: "var(--sage)" },
-];
-const TASKS = {
-  load_inventory: "Checked your pantry",
-  compose_candidate: "Drafted a meal",
-  verify_candidate: "Verified against USDA data",
-  repair_or_procure: "Repaired the meal or prepared a cart",
-  finish_verified_plan: "Final check",
+
+const WORKING_TITLES = {
+  plan_meal: "Orchestrating meal planner & LP solver...",
+  manage_inventory: "Querying kitchen inventory store...",
+  shop_for_meal: "Preparing retail cart & safety review...",
+  nutrition_status: "Calculating daily macro progress...",
 };
 
 let sessionId = null;
@@ -515,117 +1725,240 @@ let busy = false;
 let muted = false;
 let pendingContext = [];
 let plannerCollapsed = false;
+let selectedVoice = "daniel"; // Soft male default
 
-/* ------------------------------------------------------------------ voice */
+/* ------------------------------------------------------------- Voice Output System (Soft Male Engine) */
 const orb = $("#orb");
-const setOrb = (s) => (orb.dataset.state = s);
+const setOrb = (state) => (orb.dataset.state = state);
 
+function getSoftMaleVoice() {
+  if (!("speechSynthesis" in window)) return null;
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en"));
+  if (!voices.length) return null;
+
+  // Prioritize renowned soft, calm male voices
+  const softMale = 
+    voices.find((v) => /daniel/i.test(v.name)) ||
+    voices.find((v) => /oliver|george|arthur/i.test(v.name)) ||
+    voices.find((v) => /google uk english male|natural male/i.test(v.name)) ||
+    voices.find((v) => /ryan|guy|christopher|david|alex/i.test(v.name)) ||
+    voices.find((v) => /male|man/i.test(v.name) && !/female|woman/i.test(v.name)) ||
+    voices.find((v) => v.lang === "en-US") ||
+    voices[0];
+
+  return softMale;
+}
+
+// Ensure voices are loaded
+if ("speechSynthesis" in window) {
+  speechSynthesis.onvoiceschanged = () => getSoftMaleVoice();
+  speechSynthesis.getVoices();
+}
+
+let activeAudio = null;
+
+async function speak(text) {
+  if (muted || !text) return;
+  const cleaned = text.replace(/[*_`#]/g, "").trim();
+  if (!cleaned) return;
+
+  // Try Neural TTS via /api/speak first (Groq Orpheus with soft male voice)
+  try {
+    const chunk = cleaned.slice(0, 190);
+    const res = await fetch("/api/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: chunk, voice: selectedVoice }),
+    });
+
+    if (res.ok) {
+      const blob = await res.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      if (activeAudio) { activeAudio.pause(); }
+      activeAudio = new Audio(audioUrl);
+      setOrb("speaking");
+      activeAudio.onplay = () => setOrb("speaking");
+      activeAudio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        setOrb(busy ? "thinking" : "idle");
+      };
+      activeAudio.onerror = () => fallbackBrowserSpeech(cleaned);
+      await activeAudio.play();
+      return;
+    }
+  } catch (_) {
+    // Fall back to Browser Web Speech Synthesis
+  }
+
+  fallbackBrowserSpeech(cleaned);
+}
+
+function fallbackBrowserSpeech(text) {
+  if (!("speechSynthesis" in window) || muted) return;
+  speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  const maleVoice = getSoftMaleVoice();
+  if (maleVoice) utterance.voice = maleVoice;
+
+  // Soft, calm, gentle male voice cadence
+  utterance.pitch = 0.92; // Slightly warmer/lower pitch
+  utterance.rate = 0.94;  // Relaxed, soothing tempo
+  utterance.volume = 0.95;
+
+  utterance.onstart = () => setOrb("speaking");
+  utterance.onend = utterance.onerror = () => setOrb(busy ? "thinking" : "idle");
+
+  speechSynthesis.speak(utterance);
+}
+
+function previewVoiceText(voiceName) {
+  selectedVoice = voiceName;
+  updateVoiceUI();
+  speak("Hello, I am your Alexa+ culinary assistant. How can I help you reach your nutrition goals today?");
+}
+
+function updateVoiceUI() {
+  const label = selectedVoice === "daniel" ? "Soft Male (Daniel)" :
+                selectedVoice === "austin" ? "Warm Male (Austin)" : "Deep Male (Troy)";
+  $("#currentVoiceLabel").textContent = label;
+  $("#voiceStatusBadge").textContent = `🎙️ ${label} Active`;
+  $$(".voice-option-card").forEach((c) => {
+    c.classList.toggle("selected", c.dataset.voice === selectedVoice);
+  });
+}
+
+/* ------------------------------------------------------------- Speech Recognition Input */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec = null;
-let listening = false;
-let heard = "";
+let recognizer = null;
+let isListening = false;
+let transcriptHeard = "";
 
 if (SR) {
-  rec = new SR();
-  rec.lang = "en-US";
-  rec.interimResults = true;
-  rec.continuous = false;
-  rec.onstart = () => { listening = true; heard = ""; setOrb("listening"); };
-  rec.onresult = (e) => {
+  recognizer = new SR();
+  recognizer.lang = "en-US";
+  recognizer.interimResults = true;
+  recognizer.continuous = false;
+
+  recognizer.onstart = () => {
+    isListening = true;
+    transcriptHeard = "";
+    setOrb("listening");
+  };
+
+  recognizer.onresult = (e) => {
     const t = Array.from(e.results).map((r) => r[0].transcript).join("");
     $("#text").value = t;
-    heard = t;
+    transcriptHeard = t;
   };
-  rec.onerror = () => { listening = false; if (!busy) setOrb("idle"); };
-  rec.onend = () => {
-    listening = false;
-    const t = heard.trim();
-    heard = "";
-    if (t) send(t);
+
+  recognizer.onerror = () => {
+    isListening = false;
+    if (!busy) setOrb("idle");
+  };
+
+  recognizer.onend = () => {
+    isListening = false;
+    const finalTxt = transcriptHeard.trim();
+    transcriptHeard = "";
+    if (finalTxt) send(finalTxt);
     else if (!busy) setOrb("idle");
   };
-} else {
-  orb.title = "Voice input needs Chrome or Edge. You can still type.";
 }
 
 orb.addEventListener("click", () => {
-  if (!rec) { $("#text").focus(); return; }
-  if (listening) { rec.stop(); return; }
+  if (!recognizer) { $("#text").focus(); return; }
+  if (isListening) { recognizer.stop(); return; }
   if (busy) return;
-  window.speechSynthesis && speechSynthesis.cancel();
-  try { rec.start(); } catch (_) { /* already started */ }
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  if (activeAudio) activeAudio.pause();
+  try { recognizer.start(); } catch (_) {}
 });
 
-function pickVoice() {
-  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en"));
-  return (
-    voices.find((v) => /natural|samantha|google us english|aria|jenny/i.test(v.name)) ||
-    voices.find((v) => v.lang === "en-US") ||
-    voices[0]
-  );
-}
-
-function speak(text) {
-  if (muted || !("speechSynthesis" in window) || !text) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text.replace(/[*_`#]/g, ""));
-  const v = pickVoice();
-  if (v) u.voice = v;
-  u.rate = 1.02;
-  u.onstart = () => setOrb("speaking");
-  u.onend = u.onerror = () => setOrb(busy ? "thinking" : "idle");
-  speechSynthesis.speak(u);
-}
-
-$("#muteBtn").addEventListener("click", (e) => {
+/* ------------------------------------------------------------- Controls & Modals */
+$("#muteBtn").addEventListener("click", () => {
   muted = !muted;
-  if (muted && "speechSynthesis" in window) speechSynthesis.cancel();
-  e.currentTarget.textContent = muted ? "Voice replies off" : "Voice replies on";
-  e.currentTarget.setAttribute("aria-pressed", String(muted));
-  if (muted) setOrb(busy ? "thinking" : "idle");
+  if (muted) {
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    if (activeAudio) activeAudio.pause();
+  }
+  $("#muteLabel").textContent = muted ? "Voice: OFF" : "Voice: ON";
+  $("#muteBtn").classList.toggle("voice-active", !muted);
+  if (muted && !busy) setOrb("idle");
 });
 
-/* ------------------------------------------------------------------ tool lamps */
-function buildLamps(tools) {
-  const box = $("#lamps");
-  box.replaceChildren(...tools.map((t) => h("span", { class: "lamp", "data-lamp": t, text: t })));
-}
-function lamp(name) {
-  const el = document.querySelector(`[data-lamp="${name}"]`);
+$("#voiceProfileBtn").addEventListener("click", () => {
+  $("#voiceModal").classList.add("open");
+});
+
+$("#closeVoiceModal").addEventListener("click", () => {
+  $("#voiceModal").classList.remove("open");
+});
+
+$("#saveVoiceBtn").addEventListener("click", () => {
+  $("#voiceModal").classList.remove("open");
+});
+
+$$(".voice-option-card").forEach((card) => {
+  card.addEventListener("click", () => {
+    selectedVoice = card.dataset.voice;
+    updateVoiceUI();
+  });
+});
+
+$("#newSessionBtn").addEventListener("click", () => {
+  sessionId = null;
+  $("#messages").replaceChildren(
+    h("div", { class: "msg bot", text: "New session started. How can I help you plan meals or check pantry inventory?" })
+  );
+  pendingContext = [];
+});
+
+/* ------------------------------------------------------------- Lamps & Status */
+function flashLamp(name) {
+  const el = $(`[data-lamp="${name}"]`);
   if (!el) return;
-  el.classList.add("on");
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove("on"), 2800);
+  el.classList.add("active");
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove("active"), 2600);
 }
 
-/* ------------------------------------------------------------------ conversation */
-const messages = $("#messages");
-function scrollDown() { messages.scrollTop = messages.scrollHeight; }
+/* ------------------------------------------------------------- Chat & Streaming Engine */
+const messagesEl = $("#messages");
+function scrollChat() { messagesEl.scrollTop = messagesEl.scrollHeight; }
 
 function addMsg(kind, text) {
   $("#greeting")?.remove();
-  const el = h("div", { class: `msg ${kind}`, text });
-  messages.append(el);
-  scrollDown();
+  const el = h("div", { class: `msg ${kind}` });
+  if (kind === "bot") {
+    el.innerHTML = `<span class="speaker-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M17 11a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg></span>${text}`;
+  } else {
+    el.textContent = text;
+  }
+  messagesEl.append(el);
+  scrollChat();
   return el;
 }
 
-function workingEl(text) {
+function thinkingEl(text) {
   $("#greeting")?.remove();
-  const el = h("div", { class: "working", role: "status" }, h("span", { class: "wbar" }), h("span", { text }));
-  messages.append(el);
-  scrollDown();
+  const el = h("div", { class: "thinking-pill" },
+    h("div", { class: "wave-bars" }, h("span"), h("span"), h("span"), h("span")),
+    h("span", { text })
+  );
+  messagesEl.append(el);
+  scrollChat();
   return el;
 }
-
-const PLAN_WAIT = "Planning the meal and checking every number against USDA data. This takes a moment.";
 
 function setBusy(b) {
   busy = b;
   $("#sendBtn").disabled = b;
   $("#planBtn").disabled = b;
   if (b) setOrb("thinking");
-  else if (!(window.speechSynthesis && speechSynthesis.speaking)) setOrb("idle");
+  else if (!(window.speechSynthesis && speechSynthesis.speaking) && !(activeAudio && !activeAudio.paused)) {
+    setOrb("idle");
+  }
 }
 
 async function send(text) {
@@ -638,9 +1971,9 @@ async function send(text) {
   const context = pendingContext.join("\n") || undefined;
   pendingContext = [];
 
-  let activity = null;
-  const chips = new Map();
-  let wait = null;
+  let activityBox = null;
+  const chipMap = new Map();
+  let waitEl = null;
 
   try {
     const res = await fetch("/api/chat", {
@@ -648,96 +1981,119 @@ async function send(text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text, session_id: sessionId, context }),
     });
-    if (!res.ok || !res.body) throw new Error(`Server returned ${res.status}`);
+
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
     const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "";
+    const decoder = new TextDecoder();
+    let buffer = "";
+
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
-      buf += dec.decode(value, { stream: true });
-      let i;
-      while ((i = buf.indexOf("\n\n")) >= 0) {
-        const chunk = buf.slice(0, i);
-        buf = buf.slice(i + 2);
+      buffer += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buffer.indexOf("\n\n")) >= 0) {
+        const chunk = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
         if (!chunk.startsWith("data: ")) continue;
         const ev = JSON.parse(chunk.slice(6));
 
-        if (ev.type === "session") sessionId = ev.id;
-
-        else if (ev.type === "tool_start") {
-          lamp(ev.name);
-          if (!activity) { activity = h("div", { class: "activity" }); messages.append(activity); }
-          const chip = h("span", { class: "chip running", text: WORKING[ev.name] || ev.name });
-          chips.set(ev.id, chip);
-          activity.append(chip);
-          if (ev.name === "plan_meal" && !wait) wait = workingEl(PLAN_WAIT);
-          scrollDown();
-        }
-
-        else if (ev.type === "tool_result") {
-          const chip = chips.get(ev.id);
+        if (ev.type === "session") {
+          sessionId = ev.id;
+        } else if (ev.type === "tool_start") {
+          flashLamp(ev.name);
+          if (!activityBox) {
+            activityBox = h("div", { class: "activity-box" });
+            messagesEl.append(activityBox);
+          }
+          const chip = h("span", { class: "agent-chip running" },
+            h("span", { class: "pulse-orb" }),
+            h("span", { text: WORKING_TITLES[ev.name] || ev.name })
+          );
+          chipMap.set(ev.id, chip);
+          activityBox.append(chip);
+          if (ev.name === "plan_meal" && !waitEl) {
+            waitEl = thinkingEl("Solving linear macro constraints and checking pantry stock...");
+          }
+          scrollChat();
+        } else if (ev.type === "tool_result") {
+          const chip = chipMap.get(ev.id);
           if (chip) {
             chip.classList.remove("running");
-            chip.classList.add(statusTone(ev.result.status) === "bad" ? "failed" : "done");
+            const isBad = /fail|error|reject/.test(String(ev.result.status));
+            chip.classList.add(isBad ? "failed" : "done");
           }
-          if (ev.name === "plan_meal") { wait?.remove(); wait = null; }
+          if (ev.name === "plan_meal") { waitEl?.remove(); waitEl = null; }
           addCard(ev.name, ev.args, ev.result);
-        }
-
-        else if (ev.type === "text") {
+        } else if (ev.type === "text") {
           addMsg("bot", ev.text);
           if (ev.final) speak(ev.text);
-        }
-
-        else if (ev.type === "error") {
-          wait?.remove();
-          addMsg("err", `The assistant hit a problem: ${ev.message}`);
+        } else if (ev.type === "error") {
+          waitEl?.remove();
+          addMsg("err", `Agent error: ${ev.message}`);
         }
       }
     }
   } catch (err) {
-    addMsg("err", `Couldn't reach the backend: ${err.message}. Check that it's running on port 8000.`);
+    addMsg("err", `Connection issue: ${err.message}. Please verify the backend is running.`);
   } finally {
-    wait?.remove();
+    waitEl?.remove();
     setBusy(false);
   }
 }
 
-$("#composer").addEventListener("submit", (e) => { e.preventDefault(); send($("#text").value); });
+$("#composer").addEventListener("submit", (e) => {
+  e.preventDefault();
+  send($("#text").value);
+});
 
-const sg = $("#suggest");
-SUGGESTIONS.forEach((s) => sg.append(h("button", { type: "button", text: s, onclick: () => send(s) })));
+// Populate suggestions
+const suggestEl = $("#suggest");
+SUGGESTIONS.forEach((s) => {
+  suggestEl.append(h("button", {
+    type: "button",
+    class: "prompt-pill",
+    text: s,
+    onclick: () => {
+      if (s.includes("macro budget")) {
+        addMsg("user", s);
+        runFromScreen("nutrition_status", { action: "status" });
+      } else if (s.includes("expiring")) {
+        addMsg("user", s);
+        runFromScreen("manage_inventory", { action: "expiring" });
+      } else {
+        send(s);
+      }
+    }
+  }));
+});
 
-/* ------------------------------------------------------------------ direct tool calls */
-async function callTool(name, args) {
-  lamp(name);
+/* ------------------------------------------------------------- Direct Tool Invocations */
+async function callToolDirect(name, args) {
+  flashLamp(name);
   const r = await fetch(`/api/tool/${name}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(args),
   });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.detail || `Tool call failed (${r.status})`);
-  return j;
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || `Tool error (${r.status})`);
+  return data;
 }
 
-/* run a tool from the screen (form or button), show the card, say the summary */
-async function runFromScreen(name, args, say = true) {
+async function runFromScreen(name, args, shouldSpeak = true) {
   setBusy(true);
-  const wait = name === "plan_meal" ? workingEl(PLAN_WAIT) : null;
+  const wait = name === "plan_meal" ? thinkingEl("Solving macro targets with SciPy & USDA facts...") : null;
   try {
-    const result = await callTool(name, args);
+    const result = await callToolDirect(name, args);
     wait?.remove();
     addCard(name, args, result);
     const summary = result.spoken_summary || "Done.";
     addMsg("bot", summary);
-    if (say) speak(summary);
+    if (shouldSpeak) speak(summary);
     pendingContext.push(
-      `The user ran ${name} from the screen with ${JSON.stringify(args)}. Result: ${JSON.stringify({
-        status: result.status, spoken_summary: result.spoken_summary, data: result.data,
-      }).slice(0, 1800)}`
+      `User executed ${name} directly with ${JSON.stringify(args)}. Output status: ${result.status}`
     );
     return result;
   } catch (err) {
@@ -748,552 +2104,444 @@ async function runFromScreen(name, args, say = true) {
   }
 }
 
+/* ------------------------------------------------------------- Manual Planner Form */
+function applyPreset(kcal, p, c, f, label) {
+  $("#f-kcal").value = kcal;
+  $("#f-protein").value = p;
+  $("#f-carbs").value = c;
+  $("#f-fat").value = f;
+  $("#f-req").value = label;
+}
+
 $("#planner").addEventListener("submit", (e) => {
   e.preventDefault();
   if (busy) return;
   const target = {};
-  [["kcal", "f-kcal"], ["protein_g", "f-protein"], ["carbs_g", "f-carbs"], ["fat_g", "f-fat"]].forEach(([k, id]) => {
-    const v = $("#" + id).value;
-    if (v !== "") target[k] = Number(v);
-  });
+  if ($("#f-kcal").value !== "") target.kcal = Number($("#f-kcal").value);
+  if ($("#f-protein").value !== "") target.protein_g = Number($("#f-protein").value);
+  if ($("#f-carbs").value !== "") target.carbs_g = Number($("#f-carbs").value);
+  if ($("#f-fat").value !== "") target.fat_g = Number($("#f-fat").value);
+
   if (!Object.keys(target).length) {
-    addMsg("err", "Enter at least one target, like calories or protein.");
+    addMsg("err", "Please enter at least one nutrition target (e.g. Calories or Protein).");
     return;
   }
+
   const args = { target, constraints: { use_inventory: $("#f-inv").checked } };
   if ($("#f-type").value) args.meal_type = $("#f-type").value;
   if ($("#f-req").value.trim()) args.request = $("#f-req").value.trim();
-  const parts = Object.entries(target).map(([k, v]) => `${v}${k === "kcal" ? " calories" : " g " + k.replace("_g", "")}`);
-  addMsg("user", `Plan a ${args.meal_type || "meal"}: ${parts.join(", ")}`);
+
+  addMsg("user", `Build meal: ${Object.entries(target).map(([k, v]) => `${v} ${k.replace('_g', 'g')}`).join(', ')}`);
   runFromScreen("plan_meal", args);
 });
 
-/* ------------------------------------------------------------------ status helpers */
-function statusTone(s = "") {
+/* ------------------------------------------------------------- Card Dispatcher & Renderers */
+function getStatusTone(s = "") {
   s = String(s).toLowerCase();
-  if (/unverified|fail|error|reject|declin|denied|unable|not_configured|exhausted/.test(s)) return "bad";
-  if (/approval|clarif|pending|needs|partial|missing|waiting|cart_ready|awaiting|best_effort/.test(s)) return "warn";
-  if (/verified|ok|success|ready|complete|delivered|placed|saved|ordered|logged/.test(s)) return "ok";
+  if (/verified|ok|success|ready|complete|delivered|ordered|logged/.test(s)) return "ok";
+  if (/approval|clarif|pending|needs|missing|partial|best_effort/.test(s)) return "warn";
+  if (/unverified|fail|error|reject|denied|exhausted/.test(s)) return "bad";
   return "";
 }
 
-function actionBtn(label, cls, onclick) {
-  const b = h("button", { type: "button", class: cls, text: label });
-  b.addEventListener("click", async () => {
-    if (busy) return;
-    const all = b.parentElement.querySelectorAll("button");
-    all.forEach((x) => (x.disabled = true));
-    try { await onclick(); } finally { all.forEach((x) => (x.disabled = false)); }
-  });
-  return b;
+function cardShell(name, title, result) {
+  const tone = getStatusTone(result.status);
+  return h("article", { class: "app-card", "data-tool": name },
+    h("div", { class: "card-header" },
+      h("div", { class: "card-title" },
+        h("span", { class: "tool-indicator-badge" }),
+        h("span", { text: title })
+      ),
+      result.status ? h("span", { class: `card-status-pill ${tone}`, text: pretty(result.status) }) : null
+    )
+  );
 }
 
-function shell(name, title, result) {
-  const tn = statusTone(result.status);
-  return h("article", { class: "card fresh", "data-tool": name },
-    h("header", {},
-      h("h3", { text: title || TITLES[name] || name }),
-      result.status ? h("span", { class: `pill ${tn}`, text: pretty(result.status) }) : null));
-}
-
-function rawBlock(result) {
-  return h("details", { class: "raw" },
-    h("summary", { text: "Raw response" }),
-    h("pre", { text: JSON.stringify(result, null, 2) }));
-}
-
-function answerBox(placeholder, onSubmit) {
-  const input = h("input", { type: "text", placeholder, "aria-label": placeholder });
-  const go = h("button", { type: "button", class: "primary", text: "Answer" });
-  const submit = () => {
-    const a = input.value.trim();
-    if (!a || busy) return;
-    input.disabled = go.disabled = true;
-    onSubmit(a);
-  };
-  go.addEventListener("click", submit);
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } });
-  return h("div", { class: "answer" }, input, go);
-}
-
-/* ------------------------------------------------------------------ meal label */
-function goalOf(target, k) {
-  if (!isObj(target)) return null;
-  const exact = target[k], lo = target[k + "_min"], hi = target[k + "_max"];
-  const unit = k === "kcal" ? "" : " g";
-  if (lo != null && hi != null) return { text: `${num(lo)} to ${num(hi)}${unit}`, test: (v) => v >= lo - 1e-6 && v <= hi + 1e-6 };
-  if (lo != null) return { text: `at least ${num(lo)}${unit}`, test: (v) => v >= lo - 1e-6 };
-  if (hi != null) return { text: `at most ${num(hi)}${unit}`, test: (v) => v <= hi + 1e-6 };
-  if (exact != null) return { text: `about ${num(exact)}${unit}`, test: (v) => Math.abs(v - exact) <= Math.max(Math.abs(exact) * 0.05, 1) };
-  return null;
-}
-
-function daysUntil(iso) {
-  if (!iso) return null;
-  const t = Date.parse(String(iso).split("T")[0]);
-  if (Number.isNaN(t)) return null;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  return Math.round((t - today.getTime()) / 86400000);
-}
-
-function ingredientKcal(i) {
-  const p = i && i.per_100g;
-  const g = Number(i && (i.grams ?? i.grams_estimate));
-  if (isObj(p) && typeof p.kcal === "number" && g > 0) return Math.round((p.kcal * g) / 100);
-  return null;
-}
-
-function renderMeal(args, result) {
+/* 1. Meal Card Renderer */
+function renderMealCard(args, result) {
   const d = result.data || {};
   const status = String(result.status || "").toLowerCase();
   const ver = isObj(d.verification) ? d.verification : null;
   const closest = isObj(d.closest_attempt) ? d.closest_attempt : null;
-  const totals = (ver && isObj(ver.totals) && ver.totals) || (closest && isObj(closest.totals) && closest.totals) || null;
-  const ings = (d.meal && Array.isArray(d.meal.ingredients) && d.meal.ingredients)
-    || (ver && Array.isArray(ver.ingredients) && ver.ingredients)
-    || (closest && Array.isArray(closest.draft_ingredients) && closest.draft_ingredients) || [];
+  const totals = (ver && ver.totals) || (closest && closest.totals) || null;
+  const ings = (d.meal && d.meal.ingredients) || (ver && ver.ingredients) || (closest && closest.draft_ingredients) || [];
   const verified = status === "verified";
 
-  /* needs a question, a cart review or an error: no label to draw */
-  if (!totals && !ings.length) return renderPlanNotice(args, result);
+  const card = cardShell("plan_meal", verified ? "Verified Meal Recommendation" : "Nearest Nutritional Proposal", result);
+  if (result.spoken_summary) {
+    card.append(h("div", { class: "card-spoken-summary", text: result.spoken_summary }));
+  }
 
-  const target = isObj(d.target) ? d.target : args.target || null;
-  const card = shell("plan_meal", verified ? "Your meal" : "Closest meal I could build", result);
+  if (totals || ings.length) {
+    const mealName = (d.meal && d.meal.name) || (ver && ver.name) || "Custom Meal Plan";
+    const sheet = h("div", { class: "nutrition-facts-sheet" },
+      h("div", { class: "sheet-header" },
+        h("div", { class: `verified-stamp ${verified ? "ok" : "warn"}`, text: verified ? "VERIFIED" : "PROPOSAL" }),
+        h("div", { class: "sheet-title", text: "Nutrition Facts" }),
+        h("div", { class: "sheet-meal-name", text: mealName })
+      ),
+      h("div", { class: "heavy-bar" })
+    );
 
-  const tone = verified ? "" : statusTone(status) === "bad" ? "bad" : "warn";
-  const stampText = verified ? "Verified" : status === "best_effort" ? "Not verified" : "Not verified";
-  const name = (d.meal && d.meal.name) || (ver && ver.name) || (args.meal_type ? `Your ${args.meal_type}` : "Your meal");
+    if (totals) {
+      const kcal = Math.round(Number(totals.kcal || 0));
+      sheet.append(
+        h("div", { class: "cal-section" },
+          h("div", { class: "cal-label", text: "Calories" }),
+          h("div", { class: "cal-number", text: String(kcal) })
+        ),
+        h("div", { class: "medium-bar" })
+      );
 
-  const label = h("div", { class: "label" },
-    h("div", { class: `stamp ${tone}`, text: stampText }),
-    h("h3", { text: "Nutrition facts" }),
-    h("p", { class: "meal-name", text: name }),
-    h("hr", { class: "rule t8" }));
+      const macros = [
+        { label: "Protein", val: totals.protein_g, col: "var(--p-color)", key: "protein_g" },
+        { label: "Carbohydrates", val: totals.carbs_g, col: "var(--c-color)", key: "carbs_g" },
+        { label: "Dietary Fat", val: totals.fat_g, col: "var(--f-color)", key: "fat_g" },
+      ];
 
-  if (totals) {
-    const kcalGoal = goalOf(target, "kcal");
-    const kcal = Number(totals.kcal);
-    label.append(
-      h("div", { class: "cal" },
-        h("div", {}, h("div", { class: "cal-name", text: "Calories" }),
-          kcalGoal ? h("div", { class: "cal-goal", text: `Target: ${kcalGoal.text}` }) : null),
-        h("div", { class: "cal-val num", text: String(Math.round(kcal)) })),
-      h("hr", { class: "rule t4" }));
+      macros.forEach((m) => {
+        const v = Number(m.val || 0);
+        sheet.append(
+          h("div", { class: "macro-breakdown-row" },
+            h("div", { class: "macro-name" },
+              h("span", { class: "macro-name-tag", style: `background:${m.col}` }),
+              m.label
+            ),
+            h("div", { class: "macro-amount", text: `${num(v)}g` }),
+            h("div", { class: "macro-target-note", text: args.target && args.target[m.key] ? `Goal: ${args.target[m.key]}g` : "" }),
+            h("div", { html: CHECK_SVG })
+          )
+        );
+      });
 
-    MACROS.slice(1).forEach((m) => {
-      const v = Number(totals[m.k]);
-      if (Number.isNaN(v)) return;
-      const g = goalOf(target, m.k);
-      const ok = g ? g.test(v) : null;
-      label.append(h("div", { class: "mrow" },
-        h("span", { class: "mname" }, h("i", { style: `background:${m.ink}` }), m.label),
-        h("span", { class: "mval num", text: `${num(v)} g` }),
-        h("span", { class: "mgoal", text: g ? g.text : "" }),
-        ok === null ? h("span") : h("span", { class: `tick ${ok ? "ok" : "off"}`, html: ok ? CHECK : "~", title: ok ? "Within target" : "Outside target" })));
-    });
+      // Caloric distribution bar
+      const kp = (Number(totals.protein_g) || 0) * 4;
+      const kc = (Number(totals.carbs_g) || 0) * 4;
+      const kf = (Number(totals.fat_g) || 0) * 9;
+      const sum = kp + kc + kf;
+      if (sum > 0) {
+        const pctP = Math.round((kp / sum) * 100);
+        const pctC = Math.round((kc / sum) * 100);
+        const pctF = Math.round((kf / sum) * 100);
+        sheet.append(
+          h("div", { class: "caloric-ratio-bar" },
+            h("span", { style: `width:${(kp/sum)*100}%;background:var(--p-color);` }),
+            h("span", { style: `width:${(kc/sum)*100}%;background:var(--c-color);` }),
+            h("span", { style: `width:${(kf/sum)*100}%;background:var(--f-color);` })
+          ),
+          h("div", { class: "ratio-legend" },
+            h("span", { text: `${pctP}% Protein` }),
+            h("span", { text: `${pctC}% Carbs` }),
+            h("span", { text: `${pctF}% Fat` })
+          )
+        );
+      }
+    }
 
-    const kp = (Number(totals.protein_g) || 0) * 4;
-    const kc = (Number(totals.carbs_g) || 0) * 4;
-    const kf = (Number(totals.fat_g) || 0) * 9;
-    const sum = kp + kc + kf;
-    if (sum > 0) {
-      const pct = (x) => Math.round((x / sum) * 100);
-      label.append(
-        h("div", { class: "split", role: "img", "aria-label": "Share of calories from protein, carbs and fat" },
-          h("i", { style: `width:${(kp / sum) * 100}%;background:var(--p-ink)` }),
-          h("i", { style: `width:${(kc / sum) * 100}%;background:var(--c-ink)` }),
-          h("i", { style: `width:${(kf / sum) * 100}%;background:var(--f-ink)` })),
-        h("div", { class: "split-cap" },
-          h("span", { text: `${pct(kp)}% protein` }), h("span", { text: `${pct(kc)}% carbs` }), h("span", { text: `${pct(kf)}% fat` })));
+    // Ingredients
+    if (ings.length) {
+      sheet.append(h("div", { class: "heavy-bar" }));
+      const ingSec = h("div", { class: "sheet-ingredients" },
+        h("div", { class: "sheet-subtitle", text: "Verified Ingredients" })
+      );
+      ings.forEach((i) => {
+        const g = Number(i.grams ?? i.grams_estimate ?? 0);
+        ingSec.append(
+          h("div", { class: "ing-row" },
+            h("span", { text: i.name || "Item" }),
+            h("span", { class: "qty", text: g > 0 ? `${num(g)}g` : "" }),
+            h("span", { class: "cals", text: i.kcal ? `${Math.round(i.kcal)} kcal` : "" })
+          )
+        );
+      });
+      sheet.append(ingSec);
+    }
+
+    card.append(sheet);
+
+    // Recipe guide if available
+    const recipe = d.meal && d.meal.recipe;
+    if (recipe && Array.isArray(recipe.steps) && recipe.steps.length) {
+      const times = [recipe.prep_minutes ? `Prep: ${recipe.prep_minutes}m` : null, recipe.cook_minutes ? `Cook: ${recipe.cook_minutes}m` : null].filter(Boolean).join(" · ");
+      card.append(
+        h("div", { class: "recipe-deck" },
+          h("h4", { text: `👨‍🍳 ${recipe.title || "Cooking Instructions"}` }),
+          times ? h("div", { class: "recipe-times", text: times }) : null,
+          h("ol", { class: "recipe-steps" },
+            recipe.steps.map((st, i) => h("li", { class: "recipe-step-item" },
+              h("span", { class: "step-num", text: String(i + 1) }),
+              h("span", { text: st })
+            ))
+          )
+        )
+      );
+    }
+
+    // Action buttons
+    const planId = findKey(d, "plan_id");
+    if (planId) {
+      const actBar = h("div", { class: "card-actions-bar" });
+      if (verified) {
+        actBar.append(
+          h("button", { class: "btn-card-action primary", text: "✅ Log to Daily Macro Tracker", onclick: () => runFromScreen("nutrition_status", { action: "log", plan_id: planId }) })
+        );
+      } else {
+        actBar.append(
+          h("button", { class: "btn-card-action primary", text: "🛒 Shop Missing Ingredients", onclick: () => runFromScreen("shop_for_meal", { plan_id: planId }) })
+        );
+      }
+      card.append(actBar);
     }
   }
 
-  if (ings.length) {
-    label.append(h("hr", { class: "rule t8" }));
-    const sec = h("div", { class: "l-sec" }, h("h4", { text: "What goes in" }));
-    ings.forEach((i) => {
-      const g = Number(i.grams ?? i.grams_estimate);
-      const kc = ingredientKcal(i);
-      sec.append(h("div", { class: "ing" },
-        h("span", { text: i.name || "Ingredient" }),
-        h("span", { class: "g num", text: Number.isFinite(g) ? `${num(g)} g` : "" }),
-        h("span", { class: "k num", text: kc != null ? `${kc} kcal` : "" })));
-    });
-    label.append(sec);
-  }
-
-  const estimated = (ver && Array.isArray(ver.estimated_foods) && ver.estimated_foods) || [];
-  const src = ver && ver.source ? `Nutrition data: ${ver.source}.` : "";
-  if (src || estimated.length) {
-    label.append(h("p", { class: "src", text: `${src}${estimated.length ? ` Estimated values for ${estimated.join(", ")}.` : ""}`.trim() }));
-  }
-
-  if (!verified && closest) {
-    const lines = [...(closest.violations || []), ...(closest.suggestions || [])].filter((x) => typeof x === "string");
-    if (lines.length) {
-      label.append(h("div", { class: "l-sec" }, h("h4", { text: "What's off" }),
-        h("ul", { class: "diag" }, lines.slice(0, 5).map((t) => h("li", { text: t })))));
-    }
-  }
-  card.append(label);
-
-  const below = h("div", { class: "below" });
-  if (!verified && result.spoken_summary) below.append(h("p", { class: "say", text: result.spoken_summary }));
-  if (Array.isArray(d.assumptions) && d.assumptions.length) {
-    below.append(h("p", { class: "note" }, h("b", { text: "Assumed: " }), d.assumptions.join(" ")));
-  }
-
-  const recipe = d.meal && isObj(d.meal.recipe) ? d.meal.recipe : null;
-  if (recipe && Array.isArray(recipe.steps) && recipe.steps.length) {
-    const times = [recipe.prep_minutes != null ? `${recipe.prep_minutes} min prep` : null, recipe.cook_minutes != null ? `${recipe.cook_minutes} min cooking` : null].filter(Boolean).join(", ");
-    below.append(h("div", { class: "recipe" },
-      h("h4", { text: recipe.title || "How to make it" }),
-      times ? h("p", { class: "times", text: times }) : null,
-      h("ol", {}, recipe.steps.map((s) => h("li", { text: s }))),
-      Array.isArray(recipe.tips) && recipe.tips.length ? h("p", { class: "tip", text: recipe.tips.join(" ") }) : null));
-  }
-
-  if (Array.isArray(d.plan) && d.plan.length) {
-    const rows = d.plan.map((t) => {
-      const done = /completed|skipped/.test(String(t.status));
-      const bad = /blocked/.test(String(t.status));
-      return h("li", {},
-        h("span", { class: `gl ${done ? "done" : bad ? "bad" : ""}`, html: done ? CHECK : "" }),
-        h("span", { text: TASKS[t.task] || pretty(t.task) }),
-        t.owner ? h("span", { class: "who", text: pretty(t.owner) }) : null);
-    });
-    below.append(h("details", { class: "trail" }, h("summary", { text: "What the agent did" }), h("ol", { class: "steps" }, rows)));
-  }
-
-  const acts = planActions(args, d, status, verified);
-  if (acts) below.append(acts);
-  below.append(rawBlock(result));
-  card.append(below);
   return card;
 }
 
-function planActions(args, d, status, verified) {
-  const planId = findKey(d, "plan_id");
-  if (!planId) return null;
-  const box = h("div", { class: "actions" });
-  if (verified) {
-    box.append(actionBtn("Log this meal", "primary", () => runFromScreen("nutrition_status", { action: "log", plan_id: planId })));
-  } else if (statusTone(status) !== "bad" || status === "best_effort") {
-    box.append(actionBtn("Shop for missing items", "primary", () => runFromScreen("shop_for_meal", { plan_id: planId })));
-  }
-  return box.children.length ? box : null;
-}
-
-/* plan_meal results with no label: a question, a pending cart, or a failure */
-function renderPlanNotice(args, result) {
+/* 2. Pantry Inventory Card */
+function renderInventoryCard(args, result) {
   const d = result.data || {};
-  const status = String(result.status || "").toLowerCase();
-  const card = shell("plan_meal", "Meal plan", result);
-  if (result.spoken_summary) card.append(h("p", { class: "say", text: result.spoken_summary }));
-
-  const question = findKey(d, "question");
-  const sid = findKey(d, "session_id");
-  const planId = findKey(d, "plan_id");
-  const cartPending = findKey(d, "cart_id") || (d.procurement && d.procurement.status);
-
-  if (question && /needs|clarif/.test(status)) {
-    card.append(h("div", { class: "ask" }, h("p", { text: String(question) })));
-    if (sid && !cartPending) {
-      card.append(answerBox("Your answer", (a) => {
-        addMsg("user", a);
-        runFromScreen("plan_meal", { target: args.target || {}, session_id: sid, answer: a });
-      }));
-    }
-  }
-  if (cartPending && planId) {
-    card.append(h("div", { class: "actions" },
-      actionBtn("Review the cart", "primary", () => runFromScreen("shop_for_meal", { plan_id: planId }))));
-  }
-  card.append(rawBlock(result));
-  return card;
-}
-
-/* ------------------------------------------------------------------ pantry */
-function renderInventory(args, result) {
-  const d = result.data || {};
-  const status = String(result.status || "").toLowerCase();
   const items = [d.items, d.saved_items].find((x) => Array.isArray(x) && x.length && x.every(isObj)) || [];
-  const card = shell("manage_inventory", args.action === "expiring" ? "Expiring soon" : "Pantry", result);
+  const card = cardShell("manage_inventory", args.action === "expiring" ? "Pantry Expiring Items" : "Kitchen Inventory", result);
 
-  if (result.spoken_summary) card.append(h("p", { class: "say", text: result.spoken_summary }));
-
-  const question = findKey(d, "question");
-  if (question && /needs|clarif/.test(status)) {
-    card.append(h("div", { class: "ask" }, h("p", { text: String(question) })));
-    card.append(answerBox("Answer here, or say it out loud", (a) => send(a)));
+  if (result.spoken_summary) {
+    card.append(h("div", { class: "card-spoken-summary", text: result.spoken_summary }));
   }
 
   if (items.length) {
-    const list = h("div", { class: "pantry" });
+    const list = h("div", { class: "pantry-grid" });
     items.forEach((it) => {
-      const grams = it.grams_estimate ?? it.available_grams;
-      const free = it.available_grams;
-      const left = daysUntil(it.expiry);
-      const meta = [];
-      if (left != null) {
-        if (left < 0) meta.push(h("span", { class: "tag bad", text: "Expired" }));
-        else if (left <= 3) meta.push(h("span", { class: "tag warn", text: left === 0 ? "Expires today" : left === 1 ? "Expires tomorrow" : `Expires in ${left} days` }));
-        else meta.push(h("span", { class: "tag", text: `Fresh for ${left} days` }));
-      }
-      if (grams == null) meta.push(h("span", { class: "tag warn", text: "Needs a quantity" }));
-      if (it.source === "receipt" || it.source === "receipt_confirmed") meta.push(h("span", { class: "tag", text: "From receipt" }));
-      list.append(h("div", { class: "prow" },
-        h("div", {}, h("div", { class: "pname", text: it.name || "Item" }), meta.length ? h("div", { class: "pmeta" }, meta) : null),
-        h("div", { class: "pgrams num" },
-          grams != null ? `${num(Number(grams))} g` : "?",
-          free != null && grams != null && Math.round(free) !== Math.round(grams) ? h("small", { text: `${num(Number(free))} g free` }) : null)));
+      const g = it.grams_estimate ?? it.available_grams;
+      list.append(
+        h("div", { class: "pantry-item-card" },
+          h("div", {},
+            h("div", { class: "pantry-item-name", text: it.name || "Pantry Item" }),
+            h("div", { class: "pantry-meta-tags" },
+              h("span", { class: "tag-badge fresh", text: "In Stock" }),
+              it.expiry ? h("span", { class: "tag-badge warn", text: `Exp: ${it.expiry}` }) : null
+            )
+          ),
+          h("div", { class: "pantry-item-weight", text: g != null ? `${num(Number(g))}g` : "?" })
+        )
+      );
     });
     card.append(list);
-  } else if (!question && ["list", "expiring"].includes(args.action) && /ok/.test(status)) {
-    card.append(h("p", { class: "note" }, "Nothing here yet. Tell me what you bought, like ", h("b", { text: "500 grams of chicken breast" }), "."));
-  } else if (!question && !items.length && isObj(d.product)) {
-    const body = renderGeneric(d.product, new WeakSet());
-    if (body) card.append(body);
   }
 
-  if (args.action === "list" && items.length) {
-    card.append(h("div", { class: "actions" }, actionBtn("What's expiring?", "secondary", () => runFromScreen("manage_inventory", { action: "expiring" }))));
-  }
-  card.append(rawBlock(result));
   return card;
 }
 
-/* ------------------------------------------------------------------ cart */
-function money(n, cur) {
-  return typeof n === "number" ? `${cur || ""}${n.toFixed(2)}` : String(n);
-}
-
-function renderCart(args, result) {
+/* 3. Grocery Cart Card */
+function renderCartCard(args, result) {
   const d = result.data || {};
-  const status = String(result.status || "").toLowerCase();
-  const card = shell("shop_for_meal", "Shopping cart", result);
-  if (result.spoken_summary) card.append(h("p", { class: "say", text: result.spoken_summary }));
+  const card = cardShell("shop_for_meal", "Amazon Fresh · Procurement Cart", result);
+
+  if (result.spoken_summary) {
+    card.append(h("div", { class: "card-spoken-summary", text: result.spoken_summary }));
+  }
 
   const cart = findKey(d, "cart");
-  const products = (isObj(cart) && Array.isArray(cart.products) && cart.products) || (Array.isArray(findKey(d, "products")) ? findKey(d, "products") : []);
-  const cur = (isObj(cart) && cart.currency) || findKey(d, "currency") || "";
-  const cur$ = cur === "USD" ? "$" : cur === "EUR" ? "€" : cur === "GBP" ? "£" : cur ? `${cur} ` : "";
+  const prods = (isObj(cart) && cart.products) || findKey(d, "products") || [];
+  const cur = (isObj(cart) && cart.currency) || "$";
 
-  if (products.length) {
-    const lines = h("div", { class: "lines" });
-    products.forEach((p) => {
-      const nm = p.ingredient || p.name || p.product || "Item";
-      const price = p.price ?? p.price_usd ?? p.unit_price ?? p.total_price;
-      const sub = [p.pack_size_g != null ? `${num(Number(p.pack_size_g))} g pack` : null, p.quantity != null ? `x${p.quantity}` : null, p.store || p.retailer || null].filter(Boolean).join(", ");
-      lines.append(h("div", { class: "line" },
-        h("div", {}, h("div", { class: "lname", text: nm }), sub ? h("div", { class: "lsub", text: sub }) : null),
-        price != null ? h("div", { class: "lprice num", text: money(Number(price), cur$) }) : null));
+  if (Array.isArray(prods) && prods.length) {
+    const list = h("div", { class: "cart-items-list" });
+    prods.forEach((p) => {
+      const nm = p.ingredient || p.name || "Item";
+      const pr = p.price ?? p.unit_price ?? p.price_usd ?? 0;
+      list.append(
+        h("div", { class: "cart-row" },
+          h("div", {},
+            h("div", { style: "font-weight:600;", text: nm }),
+            h("div", { style: "font-size:12px;color:var(--text-muted);", text: `${p.pack_size_g || 500}g pack · Fast delivery` })
+          ),
+          h("div", { class: "num", style: "font-size:16px;font-weight:700;", text: `$${Number(pr).toFixed(2)}` })
+        )
+      );
     });
-    card.append(lines);
-    const total = isObj(cart) ? (cart.total ?? cart.total_price ?? cart.subtotal) : undefined;
-    if (typeof total === "number") card.append(h("div", { class: "total" }, h("span", { text: "Total" }), h("b", { class: "num", text: money(total, cur$) })));
-  } else {
-    const body = renderGeneric(d, new WeakSet());
-    if (body) card.append(body);
-  }
+    card.append(list);
 
-  card.append(h("div", { class: "guard" }, h("span", { html: CHECK.replace("<svg", '<svg width="16" height="16" style="stroke:var(--sky);fill:none;stroke-width:2.4"') }),
-    h("span", { text: "Mock catalog. Nothing is ordered until you approve, and no real purchase can happen." })));
-
-  const cartId = findKey(d, "cart_id");
-  const token = findKey(d, "approval_token");
-  const planId = args.plan_id || findKey(d, "plan_id");
-  const finished = /declin|cancel|deliver|placed|complete|ordered/.test(status);
-  if (cartId && planId && !finished) {
-    card.append(h("div", { class: "actions" },
-      actionBtn("Approve and order", "primary", () =>
-        runFromScreen("shop_for_meal", { plan_id: planId, confirm: true, user_approved: true, cart_id: cartId, approval_token: token })),
-      actionBtn("Decline", "secondary", () =>
-        runFromScreen("shop_for_meal", { plan_id: planId, decline: true, cart_id: cartId }))));
-  }
-  card.append(rawBlock(result));
-  return card;
-}
-
-/* ------------------------------------------------------------------ nutrition today */
-const MACRO_KEYS = {
-  kcal: ["kcal", "calories", "calories_kcal"],
-  protein_g: ["protein_g", "protein"],
-  carbs_g: ["carbs_g", "carbs", "carbohydrates_g"],
-  fat_g: ["fat_g", "fat"],
-};
-
-function asMacros(o) {
-  if (!isObj(o)) return null;
-  const m = {};
-  let n = 0;
-  for (const [k, names] of Object.entries(MACRO_KEYS)) {
-    const hit = names.find((x) => typeof o[x] === "number");
-    if (hit) { m[k] = o[hit]; n++; }
-  }
-  return n >= 2 ? m : null;
-}
-
-function collectMacros(o, label, out, seen, d = 0) {
-  if (!isObj(o) || d > 5 || out.length >= 5) return;
-  const m = asMacros(o);
-  if (m) { out.push({ label, m }); seen.add(o); return; }
-  for (const [k, v] of Object.entries(o)) collectMacros(v, pretty(k), out, seen, d + 1);
-}
-
-function ring(m, goal, used, left) {
-  const r = 34, c = 2 * Math.PI * r;
-  const frac = goal > 0 ? Math.max(0, Math.min(1, used / goal)) : 0;
-  const color = m.tile;
-  const over = goal > 0 && used > goal;
-  return h("div", { class: "ringbox" },
-    h("div", { html:
-      `<svg viewBox="0 0 86 86" role="img" aria-label="${m.label}: ${num(left)} left">` +
-      `<circle cx="43" cy="43" r="${r}" fill="none" stroke="#2b423b" stroke-width="9"/>` +
-      `<circle cx="43" cy="43" r="${r}" fill="none" stroke="${over ? "var(--bad)" : color}" stroke-width="9" stroke-linecap="round" ` +
-      `stroke-dasharray="${(frac * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 43 43)"/>` +
-      `<text x="43" y="48" text-anchor="middle" fill="#eef1e6" font-family="Archivo,Arial,sans-serif" font-weight="800" font-size="19">${num(Math.round(left))}</text></svg>` }),
-    h("div", { class: "rl", text: m.label }),
-    h("div", { class: "rg", text: over ? "over target" : m.k === "kcal" ? "left" : "g left" }));
-}
-
-function tilesFor(set) {
-  const m = set.m;
-  const tile = (cls, k, unit) => (typeof m[k] === "number"
-    ? h("div", { class: `tile ${cls}` }, h("b", { class: "num", text: String(num(m[k])) }), h("span", { text: unit })) : null);
-  return h("div", {},
-    h("div", { class: "mcap", text: set.label === "Data" ? "Macros" : set.label }),
-    h("div", { class: "tiles" }, tile("kcal", "kcal", "calories"), tile("protein", "protein_g", "protein g"), tile("carbs", "carbs_g", "carbs g"), tile("fat", "fat_g", "fat g")));
-}
-
-function renderStatus(args, result) {
-  const d = result.data || {};
-  const titles = { status: "Nutrition today", log: "Meal logged", set_targets: "Daily targets", set_profile: "Profile saved", feedback: "Taste noted" };
-  const card = shell("nutrition_status", titles[args.action || "status"] || "Nutrition", result);
-  if (result.spoken_summary) card.append(h("p", { class: "say", text: result.spoken_summary }));
-
-  const found = [];
-  const seen = new WeakSet();
-  collectMacros(d, "Data", found, seen);
-
-  const by = (re) => found.find((f) => re.test(f.label));
-  const target = by(/target|goal/i);
-  const consumed = by(/consum|eaten|logged|so far|total/i);
-  const remaining = by(/remain|left/i);
-
-  if (target && (consumed || remaining)) {
-    const rings = h("div", { class: "rings" });
-    MACROS.forEach((m) => {
-      const goal = target.m[m.k];
-      if (typeof goal !== "number") return;
-      const used = consumed && typeof consumed.m[m.k] === "number" ? consumed.m[m.k]
-        : remaining && typeof remaining.m[m.k] === "number" ? goal - remaining.m[m.k] : 0;
-      const left = remaining && typeof remaining.m[m.k] === "number" ? remaining.m[m.k] : goal - used;
-      rings.append(ring(m, goal, used, left));
-    });
-    card.append(rings);
-    found.filter((f) => f !== target && f !== consumed && f !== remaining).forEach((f) => card.append(tilesFor(f)));
-  } else {
-    found.forEach((f) => card.append(tilesFor(f)));
-  }
-
-  const body = renderGeneric(d, seen);
-  if (body && args.action !== "status") card.append(h("div", { class: "sec" }, body));
-  else if (body && !found.length) card.append(body);
-
-  card.append(rawBlock(result));
-  return card;
-}
-
-/* ------------------------------------------------------------------ generic fallback */
-const HIDE = /(_token$|(^|_)id$|^resourceUri$)/;
-function isPrimitive(v) { return v === null || typeof v !== "object"; }
-function showPrimitive(v) {
-  if (typeof v === "boolean") return v ? "Yes" : "No";
-  if (typeof v === "number") return String(num(v));
-  return String(v);
-}
-
-function renderGeneric(v, skip) {
-  if (v == null || v === "") return null;
-  if (isPrimitive(v)) return h("span", { text: showPrimitive(v) });
-  if (Array.isArray(v)) {
-    if (!v.length) return null;
-    if (v.every(isPrimitive)) return h("div", { class: "tags" }, v.map((x) => h("span", { text: showPrimitive(x) })));
-    const items = v.map((x) => renderGeneric(x, skip)).filter(Boolean);
-    return items.length ? h("div", { class: "items" }, items.map((n) => h("div", { class: "item" }, n))) : null;
-  }
-  if (skip.has(v)) return null;
-
-  const prims = [];
-  const secs = [];
-  for (const [k, val] of Object.entries(v)) {
-    if (HIDE.test(k) || val == null || val === "") continue;
-    if (isPrimitive(val)) prims.push([k, val]);
-    else {
-      const node = renderGeneric(val, skip);
-      if (node) secs.push(h("div", { class: "sec" }, h("h4", { text: pretty(k) }), node));
+    const total = isObj(cart) ? (cart.total ?? cart.total_price) : 0;
+    if (total) {
+      card.append(
+        h("div", { class: "cart-total-box" },
+          h("span", { text: "Order Total" }),
+          h("span", { class: "cart-total-price", text: `$${Number(total).toFixed(2)}` })
+        )
+      );
     }
   }
-  if (!prims.length && !secs.length) return null;
-  const wrap = h("div");
-  if (prims.length) {
-    wrap.append(h("dl", { class: "kv" }, prims.flatMap(([k, val]) => [h("dt", { text: pretty(k) }), h("dd", { text: showPrimitive(val) })])));
-  }
-  secs.forEach((s) => wrap.append(s));
-  return wrap;
-}
 
-function renderGenericCard(name, args, result) {
-  const card = shell(name, TITLES[name] || name, result);
-  if (result.spoken_summary) card.append(h("p", { class: "say", text: result.spoken_summary }));
-  const body = renderGeneric(result.data || {}, new WeakSet());
-  if (body) card.append(body);
-  card.append(rawBlock(result));
+  card.append(
+    h("div", { class: "safety-guard-banner" },
+      h("span", { html: CHECK_SVG }),
+      h("span", { text: "Human-in-the-loop Guard: Explicit user approval required to charge and complete order." })
+    )
+  );
+
+  const cartId = findKey(d, "cart_id");
+  const planId = args.plan_id || findKey(d, "plan_id");
+  const token = findKey(d, "approval_token");
+  const isFinished = /declin|cancel|deliver|placed|complete/.test(String(result.status).toLowerCase());
+
+  if (cartId && planId && !isFinished) {
+    card.append(
+      h("div", { class: "card-actions-bar" },
+        h("button", { class: "btn-card-action primary", text: "Approve & Deliver to Pantry", onclick: () => runFromScreen("shop_for_meal", { plan_id: planId, confirm: true, user_approved: true, cart_id: cartId, approval_token: token }) }),
+        h("button", { class: "btn-card-action", text: "Decline Cart", onclick: () => runFromScreen("shop_for_meal", { plan_id: planId, decline: true, cart_id: cartId }) })
+      )
+    );
+  }
+
   return card;
 }
 
-/* ------------------------------------------------------------------ card dispatcher */
-function addCard(name, args, result) {
+/* 4. Macro Status Dashboard Card */
+function renderStatusCard(args, result) {
+  const d = result.data || {};
+  const isLog = args.action === "log" || Boolean(d.meal_id);
+  const title = isLog ? "Meal Logged · Daily Macro Update" : "Daily Nutrition Budget";
+  const card = cardShell("nutrition_status", title, result);
+
+  if (result.spoken_summary) {
+    card.append(h("div", { class: "card-spoken-summary", text: result.spoken_summary }));
+  }
+
+  // Extract totals and targets from wherever the backend packs them
+  const totals = d.totals || {};
+  const targets = d.targets || (d.profile && d.profile.daily_macro_targets) || (args && args.targets) || {};
+
+  const getNum = (obj, ...keys) => {
+    for (const k of keys) {
+      if (obj && typeof obj[k] === "number") return obj[k];
+      if (d && typeof d[k] === "number") return d[k];
+    }
+    return undefined;
+  };
+
+  const consumedKcal = getNum(totals, "consumed_kcal", "kcal", "calories") ?? 0;
+  const consumedProtein = getNum(totals, "consumed_protein_g", "protein_g", "protein") ?? 0;
+  const consumedCarbs = getNum(totals, "consumed_carbs_g", "carbs_g", "carbs") ?? 0;
+  const consumedFat = getNum(totals, "consumed_fat_g", "fat_g", "fat") ?? 0;
+
+  const remKcal = getNum(totals, "remaining_kcal");
+  const remProtein = getNum(totals, "remaining_protein_g");
+  const remCarbs = getNum(totals, "remaining_carbs_g");
+  const remFat = getNum(totals, "remaining_fat_g");
+
+  const targetKcal = getNum(targets, "kcal", "calories") ?? (remKcal != null ? (consumedKcal + remKcal) : 2200);
+  const targetProtein = getNum(targets, "protein_g", "protein") ?? (remProtein != null ? (consumedProtein + remProtein) : 150);
+  const targetCarbs = getNum(targets, "carbs_g", "carbs") ?? (remCarbs != null ? (consumedCarbs + remCarbs) : 220);
+  const targetFat = getNum(targets, "fat_g", "fat") ?? (remFat != null ? (consumedFat + remFat) : 70);
+
+  const metrics = [
+    { label: "Calories", cur: Math.round(consumedKcal), rem: remKcal != null ? Math.round(remKcal) : Math.max(0, Math.round(targetKcal - consumedKcal)), max: Math.round(targetKcal), unit: "kcal", col: "var(--alexa-cyan)" },
+    { label: "Protein", cur: Math.round(consumedProtein), rem: remProtein != null ? Math.round(remProtein) : Math.max(0, Math.round(targetProtein - consumedProtein)), max: Math.round(targetProtein), unit: "g", col: "var(--p-color)" },
+    { label: "Carbs", cur: Math.round(consumedCarbs), rem: remCarbs != null ? Math.round(remCarbs) : Math.max(0, Math.round(targetCarbs - consumedCarbs)), max: Math.round(targetCarbs), unit: "g", col: "var(--c-color)" },
+    { label: "Fat", cur: Math.round(consumedFat), rem: remFat != null ? Math.round(remFat) : Math.max(0, Math.round(targetFat - consumedFat)), max: Math.round(targetFat), unit: "g", col: "var(--f-color)" },
+  ];
+
+  const ringsBox = h("div", { class: "macro-rings-dashboard" });
+  const r = 32;
+  const circ = 2 * Math.PI * r;
+
+  metrics.forEach((m) => {
+    const frac = m.max > 0 ? Math.min(1.0, Math.max(0, m.cur / m.max)) : 0;
+    const dash = (frac * circ).toFixed(1);
+    const pct = m.max > 0 ? Math.round((m.cur / m.max) * 100) : 0;
+    const isOver = m.cur > m.max;
+
+    const ringSvg = 
+      `<svg viewBox="0 0 84 84" aria-label="${m.label}: ${m.cur} of ${m.max} ${m.unit}">` +
+      `<circle cx="42" cy="42" r="${r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>` +
+      `<circle cx="42" cy="42" r="${r}" fill="none" stroke="${isOver ? "var(--coral)" : m.col}" stroke-width="8" stroke-linecap="round" ` +
+      `stroke-dasharray="${dash} ${circ.toFixed(1)}" transform="rotate(-90 42 42)" style="transition: stroke-dasharray 0.8s ease;"/>` +
+      `<text x="42" y="47" text-anchor="middle" fill="#fff" font-family="JetBrains Mono, monospace" font-weight="700" font-size="16">${m.cur}</text></svg>`;
+
+    ringsBox.append(
+      h("div", { class: "ring-pod" },
+        h("div", { html: ringSvg }),
+        h("div", { class: "ring-title", text: m.label }),
+        h("div", { class: "ring-subtitle", style: `color:${isOver ? "var(--coral)" : "var(--alexa-cyan)"};font-weight:600;margin-top:2px;`, text: isOver ? `+${m.cur - m.max}${m.unit} over` : `${m.rem} ${m.unit} left` }),
+        h("div", { class: "ring-subtitle", text: `Target: ${m.max}${m.unit} (${pct}%)` })
+      )
+    );
+  });
+
+  card.append(ringsBox);
+
+  // If a meal was logged, show pantry deductions
+  if (d.consumed_inventory && typeof d.consumed_inventory === "object" && Object.keys(d.consumed_inventory).length) {
+    const logBox = h("div", { style: "margin-top:16px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:var(--radius-md);padding:14px;" },
+      h("div", { style: "font-weight:700;color:var(--emerald);font-size:13.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;", html: `${CHECK_SVG} Deducted from Kitchen Pantry Inventory` })
+    );
+    const dedList = h("div", { style: "display:flex;flex-wrap:wrap;gap:8px;" });
+    for (const [itName, qty] of Object.entries(d.consumed_inventory)) {
+      dedList.append(h("span", { class: "tag-badge fresh", text: `${itName}: -${num(Number(qty))}g` }));
+    }
+    logBox.append(dedList);
+    card.append(logBox);
+  }
+
+  // Quick Action Buttons
+  const actBar = h("div", { class: "card-actions-bar" },
+    h("button", { class: "btn-card-action", text: "🔄 Refresh Macro Totals", onclick: () => runFromScreen("nutrition_status", { action: "status" }) }),
+    h("button", { class: "btn-card-action", text: "🎯 Plan Meal to Hit Remainder", onclick: () => {
+      $("#f-kcal").value = remKcal != null && remKcal > 100 ? Math.round(remKcal) : 600;
+      $("#f-protein").value = remProtein != null && remProtein > 10 ? Math.round(remProtein) : 45;
+      $("#f-carbs").value = remCarbs != null && remCarbs > 10 ? Math.round(remCarbs) : 50;
+      $("#f-fat").value = remFat != null && remFat > 5 ? Math.round(remFat) : 18;
+      $("#plannerBox").open = true;
+      $("#plannerBox").scrollIntoView({ behavior: "smooth" });
+    }})
+  );
+  card.append(actBar);
+
+  return card;
+}
+
+/* Add Card to Feed */
+function addCard(name, args = {}, result = {}) {
   $("#empty")?.remove();
-  args = args || {};
-  result = result || {};
   let card;
   try {
-    if (name === "plan_meal") card = renderMeal(args, result);
-    else if (name === "manage_inventory") card = renderInventory(args, result);
-    else if (name === "shop_for_meal") card = renderCart(args, result);
-    else if (name === "nutrition_status") card = renderStatus(args, result);
-    else card = renderGenericCard(name, args, result);
-  } catch (err) {
-    console.error("Card render failed, using fallback", err);
-    card = renderGenericCard(name, args, result);
+    if (name === "plan_meal") card = renderMealCard(args, result);
+    else if (name === "manage_inventory") card = renderInventoryCard(args, result);
+    else if (name === "shop_for_meal") card = renderCartCard(args, result);
+    else if (name === "nutrition_status") card = renderStatusCard(args, result);
+    else card = cardShell(name, pretty(name), result);
+  } catch (e) {
+    console.error("Card rendering error:", e);
+    card = cardShell(name, pretty(name), result);
   }
-  $("#feed").prepend(card);
-  card.addEventListener("animationend", () => card.classList.remove("fresh"), { once: true });
 
-  /* get the form out of the way once results start arriving */
-  if (!plannerCollapsed) { plannerCollapsed = true; $("#plannerBox").open = false; }
-  $(".display").scrollTo({ top: 0, behavior: "smooth" });
+  $("#feed").prepend(card);
+  if (!plannerCollapsed) {
+    plannerCollapsed = true;
+    $("#plannerBox").open = false;
+  }
 }
 
-/* ------------------------------------------------------------------ boot */
-async function boot() {
+/* ------------------------------------------------------------- Startup & Health */
+async function initApp() {
   const st = $("#status");
   try {
-    const r = await fetch("/api/health");
-    const j = await r.json();
-    if (!r.ok || !j.ok) throw new Error(j.error || "offline");
-    st.dataset.ok = "true";
-    $("#statusText").textContent = `Connected to MCP server, ${j.tools.length} tools`;
-    buildLamps(j.tools);
+    const res = await fetch("/api/health");
+    const json = await res.json();
+    if (res.ok && json.ok) {
+      st.dataset.ok = "true";
+      $("#statusText").textContent = `Online (${json.tools.length} Tools)`;
+    } else {
+      st.dataset.ok = "false";
+      $("#statusText").textContent = "MCP Offline";
+    }
   } catch (_) {
     st.dataset.ok = "false";
-    $("#statusText").textContent = "MCP server not reachable";
+    $("#statusText").textContent = "Server Disconnected";
   }
 }
-if ("speechSynthesis" in window) speechSynthesis.getVoices();
-boot();
+
+initApp();
+updateVoiceUI();
 </script>
 </body>
 </html>
